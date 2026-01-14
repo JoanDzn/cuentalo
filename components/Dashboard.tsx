@@ -26,6 +26,12 @@ const getCategoryIcon = (category: string) => {
 const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, bcvRate }) => {
     const [viewMode, setViewMode] = useState<'recent' | 'history'>('recent');
     const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+    const [hasMounted, setHasMounted] = useState(false);
+
+    // Set mounted flag after initial render
+    React.useEffect(() => {
+        setHasMounted(true);
+    }, []);
 
     // Overall Balance Calculation
     const totalIncome = transactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
@@ -106,7 +112,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
             {viewMode === 'recent' ? (
                 <>
                     {/* Balance Card - Static USD */}
-                    <div className="mb-10 text-center animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                    <div key="recent-view" className="mb-10 text-center animate-fade-in">
                         <div className="inline-flex flex-col items-center select-none">
                             <p className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">
                                 Balance Total
@@ -146,8 +152,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                     </div>
 
                     {/* Transactions List */}
-                    <div className="flex-1 relative min-h-0">
-                        <div className="h-full overflow-y-auto pr-2 pb-24 animate-slide-up" style={{ animationDelay: '0.3s' }}>
+                    <div className="flex-1 relative min-h-0 animate-fade-in">
+                        <div className="h-full overflow-y-auto pr-2 pb-24 scrollable-list">
                             <div className="sticky top-0 z-10">
                                 <div className="bg-[#F5F5F5] dark:bg-[#121212] pt-2 pb-2 transition-colors duration-500 flex justify-between items-center relative z-20">
                                     <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Recientes</h2>
@@ -204,8 +210,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                     </div>
                 </>
             ) : (
-                <div className="flex-1 relative min-h-0">
-                    <div className="h-full overflow-y-auto pr-2 pb-24 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                <div key="history-view" className="flex-1 relative min-h-0 animate-fade-in">
+                    <div className="h-full overflow-y-auto pr-2 pb-24 scrollable-list">
                         <div className="sticky top-0 z-10 mb-6">
                             <div className="bg-[#F5F5F5] dark:bg-[#121212] pt-2 pb-2 transition-colors duration-500 relative z-20">
                                 <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Balance Mensual</h2>

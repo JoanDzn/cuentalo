@@ -15,6 +15,47 @@
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 500ms;
   }
-}
 
-/* Remove separate class as we are applying globally */
+  /* Auto-hide scrollbar */
+  .scrollable-list {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.3s ease;
+  }
+
+  .scrollable-list:hover,
+  .scrollable-list:active {
+    scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+  }
+
+  /* For dark mode */
+  .dark .scrollable-list:hover,
+  .dark .scrollable-list:active {
+    scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+  }
+
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  .scrollable-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollable-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollable-list::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 3px;
+    transition: background-color 0.3s ease;
+  }
+
+  .scrollable-list:hover::-webkit-scrollbar-thumb,
+  .scrollable-list:active::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+  }
+
+  .dark .scrollable-list:hover::-webkit-scrollbar-thumb,
+  .dark .scrollable-list:active::-webkit-scrollbar-thumb {
+    background-color: rgba(75, 85, 99, 0.5);
+  }
+}
