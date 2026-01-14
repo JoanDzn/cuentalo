@@ -1,9 +1,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ExpenseAnalysis } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+
+if (!apiKey) {
+  console.error("CRITICAL: GEMINI_API_KEY is missing in .env.local");
+}
+
+const ai = new GoogleGenAI({ apiKey: apiKey });
 
 export const parseExpenseVoiceCommand = async (transcript: string): Promise<ExpenseAnalysis> => {
+  if (!apiKey) {
+    throw new Error("Missing API Key. Please check your .env.local file.");
+  }
+
   const currentDate = new Date().toISOString().split('T')[0];
 
   const systemInstruction = `
@@ -25,7 +35,7 @@ export const parseExpenseVoiceCommand = async (transcript: string): Promise<Expe
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-latest",
       contents: transcript,
       config: {
         systemInstruction: systemInstruction,

@@ -8,6 +8,8 @@ export interface Transaction {
   category: string;
   date: string; // ISO String YYYY-MM-DD
   type: TransactionType;
+  originalAmount?: number;
+  originalCurrency?: Currency;
 }
 
 export interface ExpenseAnalysis {
