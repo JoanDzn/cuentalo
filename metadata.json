@@ -1,0 +1,7 @@
+{
+  "name": "cuentalo",
+  "description": "Minimalist finance tracker with currency conversion.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
