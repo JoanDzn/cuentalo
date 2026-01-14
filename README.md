@@ -1,20 +1,48 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Cuentalo
 
-# Run and deploy your AI Studio app
+Aplicación web de gestión de gastos e ingresos con entrada por voz.
 
-This contains everything you need to run your app locally.
+## Características
 
-View your app in AI Studio: https://ai.studio/apps/drive/1UNVr9l0dCPM6O5cpdsHYKnZJXoCANbyJ
+- 💰 **Seguimiento de transacciones**: Registra ingresos y gastos con categorización automática
+- 🎤 **Entrada por voz**: Agrega transacciones usando comandos de voz en español
+- 📊 **Visualización de datos**: Dashboard con resumen de balance, ingresos y gastos
+- 🌓 **Modo oscuro/claro**: Interfaz adaptable con transiciones suaves
+- 💱 **Soporte multi-moneda**: Maneja USD y VES con conversión automática usando tasa BCV
+- 📱 **Diseño responsivo**: Interfaz optimizada para diferentes tamaños de pantalla
+- 💾 **Persistencia local**: Datos guardados en el navegador
 
-## Run Locally
+## Instalación
 
-**Prerequisites:**  Node.js
+```bash
+npm install
+```
 
+## Configuración
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Crea un archivo `.env.local` en la raíz del proyecto:
+
+```env
+GEMINI_API_KEY=tu_api_key_aqui
+```
+
+## Uso
+
+```bash
+# Modo desarrollo
+npm run dev
+
+# Build para producción
+npm run build
+
+# Preview del build
+npm run preview
+```
+
+## Tecnologías
+
+- React + TypeScript
+- Vite
+- Tailwind CSS
+- Lucide Icons
+- Web Speech API
