@@ -2,10 +2,15 @@ import React, { useState, useEffect } from 'react';
 import Dashboard from './components/Dashboard';
 import VoiceInput from './components/VoiceInput';
 import EditModal from './components/EditModal';
-import { Transaction, ExpenseAnalysis } from './types';
+import { Transaction, ExpenseAnalysis, RateData } from './types';
+import { getAllRates } from './services/exchangeRateService';
 
-// Tasa BCV por defecto (Fallback)
-const DEFAULT_BCV_RATE = 315.00;
+// Tasas por defecto (Fallback)
+const DEFAULT_RATES: RateData = {
+  bcv: 341.74,
+  euro: 395.0,
+  usdt: 500.0
+};
 
 const INITIAL_TRANSACTIONS: Transaction[] = [
   { id: '1', description: 'Pago de Salario', category: 'Salario', date: '2026-01-14', amount: 2500, type: 'income' },
@@ -26,25 +31,22 @@ function App() {
     const savedTheme = localStorage.getItem('cuentalo_theme');
     return savedTheme === 'dark';
   });
-  const [bcvRate, setBcvRate] = useState<number>(DEFAULT_BCV_RATE);
+  const [rates, setRates] = useState<RateData>(DEFAULT_RATES);
   const [isLoadingRate, setIsLoadingRate] = useState<boolean>(true);
 
-  // Fetch BCV Rate
+  // Fetch All Rates
   useEffect(() => {
-    const fetchRate = async () => {
+    const fetchRates = async () => {
       try {
-        const response = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
-        const data = await response.json();
-        if (data && data.promedio) {
-          setBcvRate(data.promedio);
-        }
+        const freshRates = await getAllRates();
+        setRates(freshRates);
       } catch (error) {
-        console.error("Error fetching BCV rate:", error);
+        console.error("Error fetching rates:", error);
       } finally {
         setIsLoadingRate(false);
       }
     };
-    fetchRate();
+    fetchRates();
   }, []);
 
   // Persistence Effect for Transactions
@@ -66,16 +68,30 @@ function App() {
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
   // CRUD Operations
-  const handleNewExpense = (analysis: ExpenseAnalysis) => {
+  const handleNewExpense = async (analysis: ExpenseAnalysis) => {
+    if (analysis.is_invalid) {
+      console.warn("Invalid command detected, ignoring:", analysis);
+      // We throw an error so the VoiceInput component shows the error state
+      throw new Error("Comando no reconocido como transacción financiera");
+    }
 
     // Currency Conversion Logic
     let finalAmount = analysis.amount;
     let originalAmount = analysis.amount;
     let originalCurrency = analysis.currency;
+    let rateType = analysis.rate_type || null;
+    let rateValue: number | undefined;
 
     if (analysis.currency === 'VES') {
-      finalAmount = analysis.amount / bcvRate;
-      console.log(`Converting ${analysis.amount} VES to ${finalAmount} USD at rate ${bcvRate}`);
+      // Import getRateValue dynamically to avoid circular dependencies
+      const { getRateValue } = await import('./services/exchangeRateService');
+
+      // Use specified rate type or default to BCV
+      const effectiveRateType = analysis.rate_type || 'bcv';
+      rateValue = await getRateValue(effectiveRateType);
+
+      finalAmount = analysis.amount / rateValue;
+      console.log(`Converting ${analysis.amount} VES to ${finalAmount} USD at ${effectiveRateType} rate ${rateValue}`);
     }
 
     const newTransaction: Transaction = {
@@ -86,7 +102,9 @@ function App() {
       date: analysis.date,
       type: analysis.type,
       originalAmount: originalCurrency === 'VES' ? originalAmount : undefined,
-      originalCurrency: originalCurrency === 'VES' ? 'VES' : undefined
+      originalCurrency: originalCurrency === 'VES' ? 'VES' : undefined,
+      rateType: originalCurrency === 'VES' ? rateType : undefined,
+      rateValue: originalCurrency === 'VES' ? rateValue : undefined
     };
     setTransactions(prev => [newTransaction, ...prev]);
   };
@@ -118,7 +136,7 @@ function App() {
           onEditTransaction={openEditModal}
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
-          bcvRate={bcvRate}
+          rates={rates}
         />
       </main>
 
