@@ -93,6 +93,6 @@ export const useExchangeRates = () => {
 
     return { rates, loading };
 };
-
 // For non-React usage
 import React from 'react';
+

@@ -39,3 +39,28 @@ export enum AppState {
   SUCCESS = 'SUCCESS',
   ERROR = 'ERROR'
 }
+
+export interface FinancialHealthAnswer {
+  questionId: string;
+  answer: string | number;
+}
+
+export interface FinancialHealthTest {
+  completed: boolean;
+  answers: FinancialHealthAnswer[];
+  score?: number;
+  completedAt?: string;
+}
+
+export interface SavingsMission {
+  id: string;
+  title: string;
+  description: string;
+  tip: string;
+  targetAmount?: number;
+  currentProgress: number;
+  targetProgress: number; // 0-100
+  status: 'locked' | 'active' | 'completed';
+  type: 'days' | 'amount' | 'habit';
+  icon: string;
+}

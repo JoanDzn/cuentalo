@@ -24,13 +24,13 @@ const getCategoryIcon = (category: string) => {
 };
 
 const getRateLabel = (rateType: string | null | undefined): string => {
-    if (!rateType) return '';
+    if (!rateType) return 'Dolar';
     const labels: Record<string, string> = {
-        bcv: 'BCV',
-        euro: 'Euro BCV',
+        bcv: 'Dolar',
+        euro: 'Euro',
         usdt: 'USDT'
     };
-    return labels[rateType] || '';
+    return labels[rateType] || 'Dolar';
 };
 
 const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onClose, transactions, type, title }) => {

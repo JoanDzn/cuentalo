@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Transaction, TransactionType, RateData } from '../types';
-import { ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, Info, Globe, TrendingUp, Coins } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, Info, Globe, TrendingUp, Coins, User, Target } from 'lucide-react';
 import TransactionListModal from './TransactionListModal';
 
 interface DashboardProps {
@@ -9,6 +10,8 @@ interface DashboardProps {
     isDarkMode: boolean;
     toggleTheme: () => void;
     rates: RateData;
+    onProfileClick: () => void;
+    onMissionsClick: () => void;
 }
 
 // Helper to get icon
@@ -26,16 +29,16 @@ const getCategoryIcon = (category: string) => {
 
 // Helper to get rate label
 const getRateLabel = (rateType: string | null | undefined): string => {
-    if (!rateType) return '';
+    if (!rateType) return 'Dolar';
     const labels: Record<string, string> = {
-        bcv: 'BCV',
-        euro: 'Euro BCV',
+        bcv: 'Dolar',
+        euro: 'Euro',
         usdt: 'USDT'
     };
-    return labels[rateType] || '';
+    return labels[rateType] || 'Dolar';
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onMissionsClick }) => {
     const [viewMode, setViewMode] = useState<'recent' | 'history'>('recent');
     const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
     const [showAllRates, setShowAllRates] = useState(false);
@@ -95,10 +98,24 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
             <div className="w-full max-w-2xl mx-auto h-full flex flex-col p-6 transition-colors duration-500 font-sans">
 
                 {/* Header - Centered Logo */}
-                <div className="relative flex flex-col items-center justify-center mb-6 pt-4 animate-fade-in text-center">
+                <div className="relative flex flex-col items-center justify-center mb-6 pt-4 text-center">
                     <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white lowercase">cuentalo</h1>
 
-                    {/* Absolute positioned theme toggle to keep logo perfectly centered */}
+                    {/* Absolute positioned buttons to keep logo perfectly centered */}
+                    <div className="absolute top-4 left-0 flex items-center gap-2">
+                        <button
+                            onClick={onProfileClick}
+                            className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        >
+                            <User size={20} />
+                        </button>
+                        <button
+                            onClick={onMissionsClick}
+                            className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        >
+                            <Target size={20} />
+                        </button>
+                    </div>
                     <div className="absolute top-4 right-0">
                         <button
                             onClick={toggleTheme}
@@ -110,7 +127,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                 </div>
 
                 {/* Tabs */}
-                <div className="flex bg-gray-200 dark:bg-[#1E1E1E] p-1 rounded-2xl mb-8 self-center w-full max-w-xs animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                <div className="flex bg-gray-200 dark:bg-[#1E1E1E] p-1 rounded-2xl mb-8 self-center w-full max-w-xs">
                     <button
                         onClick={() => setViewMode('recent')}
                         className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-all duration-500 ${viewMode === 'recent' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
@@ -128,7 +145,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                 {viewMode === 'recent' ? (
                     <>
                         {/* Balance Card - Static USD */}
-                        <div key="recent-view" className="mb-10 text-center animate-fade-in">
+                        <div key="recent-view" className="mb-10 text-center">
                             <div className="inline-flex flex-col items-center select-none">
                                 <p className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">
                                     Balance Total
@@ -159,7 +176,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                                 <Info size={12} />
                                             </div>
                                             <div className="text-center">
-                                                <div className="text-[7px] text-gray-400 uppercase font-black">Dolar BCV</div>
+                                                <div className="text-[7px] text-gray-400 uppercase font-black">Dolar</div>
                                                 <div className="text-[10px] font-bold text-gray-700 dark:text-gray-300">{rates.bcv.toFixed(2)}</div>
                                             </div>
                                         </div>
@@ -169,7 +186,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                                 <Globe size={12} />
                                             </div>
                                             <div className="text-center">
-                                                <div className="text-[7px] text-gray-400 uppercase font-black">Euro BCV</div>
+                                                <div className="text-[7px] text-gray-400 uppercase font-black">Euro</div>
                                                 <div className="text-[10px] font-bold text-gray-700 dark:text-gray-300">{rates.euro.toFixed(2)}</div>
                                             </div>
                                         </div>
@@ -217,7 +234,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                         </div>
 
                         {/* Transactions List */}
-                        <div className="flex-1 relative min-h-0 animate-fade-in">
+                        <div className="flex-1 relative min-h-0">
                             <div className="h-full overflow-y-auto pr-2 pb-24 scrollable-list">
                                 <div className="sticky top-0 z-10">
                                     <div className="bg-[#F5F5F5] dark:bg-[#121212] pt-2 pb-2 transition-colors duration-500 flex justify-between items-center relative z-20">
@@ -239,10 +256,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                             <div
                                                 key={t.id}
                                                 onClick={() => onEditTransaction(t)}
-                                                className="group bg-white dark:bg-[#1E1E1E] p-4 rounded-2xl shadow-sm border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/50 cursor-pointer transition-all duration-500 flex items-center justify-between hover:translate-x-1"
+                                                className="group bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl shadow-sm border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/50 cursor-pointer flex items-center justify-between transition-transform duration-300 hover:translate-x-1"
                                             >
                                                 <div className="flex items-center gap-4">
-                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${t.type === 'income'
+                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${t.type === 'income'
                                                         ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
                                                         : 'bg-gray-50 dark:bg-[#2C2C2C] text-gray-600 dark:text-gray-400'
                                                         }`}>
@@ -276,7 +293,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                         </div>
                     </>
                 ) : (
-                    <div key="history-view" className="flex-1 relative min-h-0 animate-fade-in">
+                    <div key="history-view" className="flex-1 relative min-h-0">
                         <div className="h-full overflow-y-auto pr-2 pb-24 scrollable-list">
                             <div className="sticky top-0 z-10 mb-6">
                                 <div className="bg-[#F5F5F5] dark:bg-[#121212] pt-2 pb-2 transition-colors duration-500 relative z-20">
@@ -337,43 +354,51 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                                 </div>
 
                                                 {/* Expanded List */}
-                                                {isExpanded && (
-                                                    <div className="bg-gray-50/50 dark:bg-black/20 p-4 border-t border-gray-100 dark:border-[#333] animate-slide-up overflow-hidden">
-                                                        <div className="space-y-3 max-h-[400px] overflow-y-auto scrollable-list">
-                                                            {data.transactions.map((t) => (
-                                                                <div
-                                                                    key={t.id}
-                                                                    onClick={(e) => { e.stopPropagation(); onEditTransaction(t); }}
-                                                                    className="bg-white dark:bg-[#252525] p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-[#2C2C2C] transition-all duration-500"
-                                                                >
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-500 ${t.type === 'income'
-                                                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                                                                            : 'bg-gray-100 dark:bg-[#333] text-gray-600 dark:text-gray-400'
-                                                                            }`}>
-                                                                            {getCategoryIcon(t.category)}
-                                                                        </div>
-                                                                        <div className="text-sm">
-                                                                            <div className="font-medium text-gray-900 dark:text-white capitalize transition-colors duration-500">{t.description}</div>
-                                                                            <div className="text-[10px] text-gray-400 transition-colors duration-500">{t.date}</div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="text-right">
-                                                                        <div className={`font-bold text-sm transition-colors duration-500 ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
-                                                                            {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 0 })}
-                                                                        </div>
-                                                                        {t.originalAmount && t.originalCurrency === 'VES' && (
-                                                                            <div className="text-[10px] text-gray-400 font-medium transition-colors duration-500">
-                                                                                {t.originalAmount.toLocaleString('es-VE', { maximumFractionDigits: 0 })} Bs
-                                                                                {t.rateType && <span className="ml-1 text-indigo-400 opacity-80 uppercase">• {getRateLabel(t.rateType)}</span>}
+                                                <AnimatePresence>
+                                                    {isExpanded && (
+                                                        <motion.div
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: 'auto', opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                                            className="bg-gray-50/50 dark:bg-black/20 p-4 border-t border-gray-100 dark:border-[#333] overflow-hidden"
+                                                        >
+                                                            <div className="space-y-3 max-h-[400px] overflow-y-auto scrollable-list">
+                                                                {data.transactions.map((t) => (
+                                                                    <div
+                                                                        key={t.id}
+                                                                        onClick={(e) => { e.stopPropagation(); onEditTransaction(t); }}
+                                                                        className="bg-white dark:bg-[#1a1a1a] p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-[#2C2C2C] border border-transparent dark:border-white/5 shadow-sm"
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${t.type === 'income'
+                                                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                                                                                : 'bg-gray-100 dark:bg-[#333] text-gray-600 dark:text-gray-400'
+                                                                                }`}>
+                                                                                {getCategoryIcon(t.category)}
                                                                             </div>
-                                                                        )}
+                                                                            <div className="text-sm">
+                                                                                <div className="font-semibold text-gray-900 dark:text-white capitalize">{t.description}</div>
+                                                                                <div className="text-[10px] text-gray-400">{t.date}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <div className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
+                                                                                {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                                                                            </div>
+                                                                            {t.originalAmount && t.originalCurrency === 'VES' && (
+                                                                                <div className="text-[10px] text-gray-400 font-medium">
+                                                                                    {t.originalAmount.toLocaleString('es-VE', { maximumFractionDigits: 0 })} Bs
+                                                                                    {t.rateType && <span className="ml-1 text-indigo-400 opacity-80 uppercase">• {getRateLabel(t.rateType)}</span>}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                                ))}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
                                             </div>
                                         )
                                     })}
