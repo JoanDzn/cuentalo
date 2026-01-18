@@ -1,13 +1,14 @@
 import React from 'react';
 import { Transaction, TransactionType } from '../types';
-import { X, ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign } from 'lucide-react';
+import { X, ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, List } from 'lucide-react';
 
 interface TransactionListModalProps {
     isOpen: boolean;
     onClose: () => void;
     transactions: Transaction[];
-    type: TransactionType;
+    type: TransactionType | 'all';
     title: string;
+    onEditTransaction?: (t: Transaction) => void;
 }
 
 // Helper to get icon (same as Dashboard)
@@ -33,12 +34,12 @@ const getRateLabel = (rateType: string | null | undefined): string => {
     return labels[rateType] || 'Dolar';
 };
 
-const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onClose, transactions, type, title }) => {
+const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onClose, transactions, type, title, onEditTransaction }) => {
     if (!isOpen) return null;
 
     // Filter by type and sort by date (most recent first)
     const filteredTransactions = transactions
-        .filter(t => t.type === type)
+        .filter(t => type === 'all' || t.type === type)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return (
@@ -50,9 +51,11 @@ const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onC
                     <div className="flex items-center gap-3">
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${type === 'income'
                             ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                            : type === 'expense'
+                                ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
                             }`}>
-                            {type === 'income' ? <ArrowUpRight size={24} /> : <ArrowDownRight size={24} />}
+                            {type === 'income' ? <ArrowUpRight size={24} /> : type === 'expense' ? <ArrowDownRight size={24} /> : <List size={24} />}
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{title}</h2>
@@ -81,35 +84,35 @@ const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onC
                             {filteredTransactions.map((t) => (
                                 <div
                                     key={t.id}
-                                    className="bg-gray-50 dark:bg-[#252525] p-4 rounded-2xl border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300"
+                                    onClick={() => onEditTransaction && onEditTransaction(t)}
+                                    className={`bg-gray-50 dark:bg-[#252525] p-3 rounded-2xl border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-300 ${onEditTransaction ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-[#333]' : ''}`}
                                 >
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${t.type === 'income'
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${t.type === 'income'
                                                 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
                                                 : 'bg-gray-100 dark:bg-[#2C2C2C] text-gray-600 dark:text-gray-400'
                                                 }`}>
-                                                {getCategoryIcon(t.category)}
+                                                {React.cloneElement(getCategoryIcon(t.category), { size: 18 })}
                                             </div>
                                             <div>
-                                                <div className="font-bold text-gray-900 dark:text-white capitalize">{t.description}</div>
-                                                <div className="text-xs text-gray-400 flex items-center gap-2">
+                                                <div className="text-sm font-bold text-gray-900 dark:text-white capitalize">{t.description}</div>
+                                                <div className="text-[11px] text-gray-400 flex items-center gap-1.5">
                                                     <span className="capitalize">{t.category}</span>
                                                     <span>•</span>
                                                     <span>{t.date}</span>
-
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className={`text-lg font-bold ${t.type === 'income'
+                                            <div className={`text-sm font-bold ${t.type === 'income'
                                                 ? 'text-emerald-600 dark:text-emerald-400'
                                                 : 'text-gray-900 dark:text-white'
                                                 }`}>
                                                 {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </div>
                                             {t.originalAmount && t.originalCurrency === 'VES' && (
-                                                <div className="text-xs text-gray-400 font-medium">
+                                                <div className="text-[10px] text-gray-400 font-medium">
                                                     {t.originalAmount.toLocaleString('es-VE', { maximumFractionDigits: 2 })} Bs
                                                     {t.rateType && <span className="ml-1 text-indigo-400 opacity-80 uppercase">• {getRateLabel(t.rateType)}</span>}
                                                 </div>
@@ -122,7 +125,7 @@ const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onC
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

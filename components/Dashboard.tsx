@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Transaction, TransactionType, RateData } from '../types';
-import { ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard, List } from 'lucide-react';
 import TransactionListModal from './TransactionListModal';
 
 interface DashboardProps {
@@ -45,17 +45,17 @@ const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick }: { onEx
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setPage(prev => (prev + 1) % 3);
+            setPage(prev => (prev + 1) % 3); // Cycle through 3 slides
         }, 6000);
         return () => clearInterval(interval);
-    }, []);
+    }, [page]);
 
     const current = slides[page];
 
     return (
-        <div className="w-[92%] mx-auto mt-8 mb-4">
+        <div className="w-[92%] mx-auto mb-2">
             <div
-                className="bg-white dark:bg-[#111] rounded-[24px] px-5 py-5 relative overflow-hidden shadow-lg cursor-pointer active:scale-95 transition-transform border border-gray-100 dark:border-white/5"
+                className="bg-white dark:bg-[#111] rounded-[24px] px-4 pt-3 pb-4 md:py-5 relative shadow-lg cursor-pointer active:scale-95 transition-transform border border-gray-100 dark:border-white/5"
             >
                 {/* Click Zones */}
                 <div className="absolute inset-0 z-10 flex">
@@ -66,16 +66,16 @@ const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick }: { onEx
 
                 <div className="flex items-center justify-between relative z-20 pointer-events-none">
                     <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl ${current.color} flex items-center justify-center shadow-lg shadow-black/5 dark:shadow-white/5`}>
-                            {current.icon}
+                        <div className={`w-8 h-8 rounded-xl ${current.color} flex items-center justify-center shadow-lg shadow-black/5 dark:shadow-white/5`}>
+                            {React.cloneElement(current.icon as React.ReactElement<any>, { size: 16 })}
                         </div>
-                        <div className="text-left flex flex-col justify-center h-10">
-                            <h3 className="text-base font-bold text-gray-900 dark:text-white leading-tight">{current.title}</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium leading-tight">{current.msg}</p>
+                        <div className="text-left flex flex-col justify-center h-8">
+                            <h3 className="text-xs font-bold text-gray-900 dark:text-white leading-tight">{current.title}</h3>
+                            <p className="text-[9px] text-gray-500 dark:text-gray-400 font-medium leading-tight">{current.msg}</p>
                         </div>
                     </div>
 
-                    <div className="absolute left-1/2 -translate-x-1/2 bottom-1 flex gap-1 pointer-events-auto">
+                    <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 flex gap-1 pointer-events-auto">
                         {slides.map((_, i) => (
                             <button
                                 key={i}
@@ -86,7 +86,7 @@ const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick }: { onEx
                     </div>
 
                     <div className="p-1">
-                        <ChevronRight size={20} className="text-gray-300 dark:text-gray-600" />
+                        <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
                     </div>
                 </div>
             </div>
@@ -124,16 +124,20 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
     const [showAllRates, setShowAllRates] = useState(false);
     const [hasMounted, setHasMounted] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
-    const [modalType, setModalType] = useState<TransactionType>('expense');
+    const [modalType, setModalType] = useState<TransactionType | 'all'>('expense');
 
     // Set mounted flag after initial render
     React.useEffect(() => {
         setHasMounted(true);
     }, []);
 
-    // Overall Balance Calculation
-    const totalIncome = transactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
-    const totalExpense = transactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
+    // Current Month Balance Calculation
+    const now = new Date();
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentMonthTransactions = transactions.filter(t => t.date.startsWith(currentMonthKey));
+
+    const totalIncome = currentMonthTransactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
+    const totalExpense = currentMonthTransactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
     const balanceUSD = totalIncome - totalExpense;
 
     // Monthly Grouping Calculation
@@ -201,7 +205,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                 </div>
 
                 {/* Tabs */}
-                <div className="flex bg-gray-200 dark:bg-[#1E1E1E] p-1 rounded-2xl mb-8 self-center w-full max-w-xs">
+                <div className="flex bg-gray-200 dark:bg-[#1E1E1E] p-1 rounded-2xl mb-2 self-center w-full max-w-xs">
                     <button
                         onClick={() => setViewMode('recent')}
                         className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-all duration-500 ${viewMode === 'recent' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
@@ -217,65 +221,70 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                 </div>
 
                 {viewMode === 'recent' ? (
-                    <>
-                        {/* Balance Card - Static USD */}
-                        <div key="recent-view" className="mb-10 text-center">
-                            <div className="inline-flex flex-col items-center select-none">
-                                <p className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">
-                                    Balance Total
-                                </p>
+                    <div className="flex-1 relative min-h-0">
+                        <div className="absolute top-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-b from-[#F5F5F5] to-transparent dark:from-[#121212] z-30" />
+                        <div className="h-full overflow-y-auto scrollable-list pt-6 pb-24">
+                            {/* Balance Card - Static USD */}
+                            <div key="recent-view" className="mb-2 text-center">
+                                <div className="inline-flex flex-col items-center select-none">
+                                    <p className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">
+                                        Balance Total
+                                    </p>
 
-                                <div className={`text-6xl font-extrabold tracking-tight mb-2 ${balanceUSD >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
-                                    ${balanceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </div>
-                            </div>
-
-
-                            <div className="flex justify-center gap-4 mt-2">
-                                <button
-                                    onClick={() => { setModalType('income'); setModalOpen(true); }}
-                                    className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] px-5 py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                                        <ArrowUpRight size={16} />
+                                    <div className={`text-6xl font-extrabold tracking-tight ${balanceUSD >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
+                                        ${balanceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
-                                    <div className="text-left">
-                                        <div className="text-[10px] text-gray-400 font-bold uppercase">Ingresos</div>
-                                        <div className="text-sm font-bold text-gray-900 dark:text-gray-100">${totalIncome.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                                    </div>
-                                </button>
-
-                                <button
-                                    onClick={() => { setModalType('expense'); setModalOpen(true); }}
-                                    className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] px-5 py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center">
-                                        <ArrowDownRight size={16} />
-                                    </div>
-                                    <div className="text-left">
-                                        <div className="text-[10px] text-gray-400 font-bold uppercase">Gastos</div>
-                                        <div className="text-sm font-bold text-gray-900 dark:text-gray-100">${totalExpense.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                                    </div>
-                                </button>
-                            </div>
-
-                            <RecurringCTA
-                                onExpenseClick={onSubscriptionsClick}
-                                onIncomeClick={onFixedIncomeClick}
-                                onMissionsClick={onMissionsClick}
-                            />
-                        </div>
-
-                        {/* Transactions List */}
-                        <div className="flex-1 relative min-h-0">
-                            <div className="h-full overflow-y-auto pr-2 pb-24 scrollable-list">
-                                <div className="sticky top-0 z-10">
-                                    <div className="bg-[#F5F5F5] dark:bg-[#121212] pt-2 pb-2 transition-colors duration-500 flex justify-between items-center relative z-20">
-                                        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Recientes</h2>
-                                    </div>
-                                    <div className="h-6 w-full pointer-events-none bg-[#F5F5F5] dark:bg-[#121212]" style={{ maskImage: 'linear-gradient(to bottom, black, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, black, transparent)' }} />
                                 </div>
 
+
+                                <div className="flex justify-center gap-3 my-3 md:gap-4 md:my-5">
+                                    <button
+                                        onClick={() => { setModalType('income'); setModalOpen(true); }}
+                                        className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] px-4 py-2 md:px-5 md:py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
+                                    >
+                                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                                            <ArrowUpRight size={14} className="md:w-4 md:h-4" />
+                                        </div>
+                                        <div className="text-left">
+                                            <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase">Ingresos</div>
+                                            <div className="text-xs md:text-sm font-bold text-gray-900 dark:text-gray-100">${totalIncome.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        onClick={() => { setModalType('expense'); setModalOpen(true); }}
+                                        className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] px-4 py-2 md:px-5 md:py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
+                                    >
+                                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center">
+                                            <ArrowDownRight size={14} className="md:w-4 md:h-4" />
+                                        </div>
+                                        <div className="text-left">
+                                            <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase">Gastos</div>
+                                            <div className="text-xs md:text-sm font-bold text-gray-900 dark:text-gray-100">${totalExpense.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                        </div>
+                                    </button>
+                                </div>
+
+                                <RecurringCTA
+                                    onExpenseClick={onSubscriptionsClick}
+                                    onIncomeClick={onFixedIncomeClick}
+                                    onMissionsClick={onMissionsClick}
+                                />
+                            </div>
+
+                            {/* Transactions Header - Clickable for Full Menu */}
+                            <div className="mb-1 px-1">
+                                <button
+                                    onClick={() => { setModalType('all'); setModalOpen(true); }}
+                                    className="flex items-center gap-2 group"
+                                >
+                                    <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Recientes</h2>
+                                    <ChevronRight size={16} className="text-gray-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
+                                </button>
+                            </div>
+
+                            {/* Transactions List (Inline - Flow) */}
+                            <div className="pt-2 pb-8">
                                 {transactions.length === 0 ? (
                                     <div className="text-center py-20 opacity-50">
                                         <div className="mx-auto w-16 h-16 bg-gray-200 dark:bg-[#1E1E1E] rounded-full flex items-center justify-center text-gray-400 mb-4">
@@ -289,31 +298,31 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                             <div
                                                 key={t.id}
                                                 onClick={() => onEditTransaction(t)}
-                                                className="group bg-white dark:bg-[#1a1a1a] p-4 rounded-2xl shadow-sm border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/50 cursor-pointer flex items-center justify-between transition-transform duration-300 hover:translate-x-1"
+                                                className="group bg-white dark:bg-[#1a1a1a] p-3 rounded-2xl shadow-sm border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/50 cursor-pointer flex items-center justify-between transition-transform duration-300 hover:translate-x-1"
                                             >
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${t.type === 'income'
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${t.type === 'income'
                                                         ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
                                                         : 'bg-gray-50 dark:bg-[#2C2C2C] text-gray-600 dark:text-gray-400'
                                                         }`}>
-                                                        {getCategoryIcon(t.category)}
+                                                        {React.cloneElement(getCategoryIcon(t.category) as React.ReactElement<any>, { size: 16 })}
                                                     </div>
                                                     <div>
-                                                        <div className="font-bold text-gray-900 dark:text-white capitalize">{t.description}</div>
-                                                        <div className="text-xs text-gray-400 capitalize">{t.category} • {t.date}</div>
+                                                        <div className="text-sm font-bold text-gray-900 dark:text-white capitalize">{t.description}</div>
+                                                        <div className="text-[10px] text-gray-400 capitalize">{t.category} • {t.date}</div>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <div className={`font-bold ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
+                                                    <div className={`text-sm font-bold ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
                                                         {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </div>
                                                     {t.originalAmount && t.originalCurrency === 'VES' && (
-                                                        <div className="text-[10px] text-gray-400 font-medium">
+                                                        <div className="text-[9px] text-gray-400 font-medium">
                                                             {t.originalAmount.toLocaleString('es-VE', { maximumFractionDigits: 2 })} Bs
                                                             {t.rateType && <span className="ml-1 text-indigo-400 opacity-80 uppercase">• {getRateLabel(t.rateType)}</span>}
                                                         </div>
                                                     )}
-                                                    <div className="text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity text-xs flex justify-end items-center gap-1 mt-1">
+                                                    <div className="text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] flex justify-end items-center gap-1 mt-0.5">
                                                         <Edit2 size={10} /> Editar
                                                     </div>
                                                 </div>
@@ -322,12 +331,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                     </div>
                                 )}
                             </div>
-                            <div className="absolute bottom-0 left-0 right-2 z-10 h-24 pointer-events-none bg-[#F5F5F5] dark:bg-[#121212]" style={{ maskImage: 'linear-gradient(to top, black, transparent)', WebkitMaskImage: 'linear-gradient(to top, black, transparent)' }} />
                         </div>
-                    </>
+                        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none bg-[#F5F5F5] dark:bg-[#121212]" style={{ maskImage: 'linear-gradient(to top, black, transparent)', WebkitMaskImage: 'linear-gradient(to top, black, transparent)' }} />
+                    </div>
                 ) : (
                     <div key="history-view" className="flex-1 relative min-h-0">
-                        <div className="h-full overflow-y-auto pr-2 pb-24 scrollable-list">
+                        <div className="h-full overflow-y-auto pr-2 pb-36 scrollable-list">
                             <div className="sticky top-0 z-10 mb-6">
                                 <div className="bg-[#F5F5F5] dark:bg-[#121212] pt-2 pb-2 transition-colors duration-500 relative z-20">
                                     <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Balance Mensual</h2>
@@ -354,32 +363,32 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                                             <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                                                                 <Calendar size={18} />
                                                             </div>
-                                                            <h3 className="font-bold text-gray-900 dark:text-white capitalize text-lg">{formatMonth(monthKey)}</h3>
+                                                            <h3 className="font-bold text-gray-900 dark:text-white text-lg">{formatMonth(monthKey).charAt(0).toUpperCase() + formatMonth(monthKey).slice(1)}</h3>
                                                         </div>
                                                         <div className="flex items-center gap-2">
-                                                            <div className="text-xs font-mono text-gray-400">{data.transactions.length} Movimientos</div>
+                                                            <div className="text-[10px] font-mono text-gray-400">{data.transactions.length} Movimientos</div>
                                                             <div className={`transition-transform duration-500 ${isExpanded ? 'rotate-180' : ''}`}>
                                                                 <ChevronDown size={16} className="text-gray-400" />
                                                             </div>
                                                         </div>
                                                     </div>
 
-                                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                                    <div className="grid grid-cols-3 gap-1 md:gap-2 text-center">
                                                         <div>
-                                                            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Ingresos</div>
-                                                            <div className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">
+                                                            <div className="text-[10px] md:text-xs text-gray-400 uppercase tracking-wider mb-1">Ingresos</div>
+                                                            <div className="text-emerald-600 dark:text-emerald-400 font-bold text-xs md:text-sm">
                                                                 +${data.income.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Gastos</div>
-                                                            <div className="text-red-500 font-bold text-sm">
+                                                            <div className="text-[10px] md:text-xs text-gray-400 uppercase tracking-wider mb-1">Gastos</div>
+                                                            <div className="text-red-500 font-bold text-xs md:text-sm">
                                                                 -${data.expense.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                                             </div>
                                                         </div>
                                                         <div className="bg-gray-50 dark:bg-[#2C2C2C] rounded-lg py-1">
-                                                            <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Neto</div>
-                                                            <div className={`font-bold text-sm ${data.balance >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
+                                                            <div className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Neto</div>
+                                                            <div className={`font-bold text-xs md:text-sm ${data.balance >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
                                                                 ${data.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                                             </div>
                                                         </div>
@@ -449,7 +458,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                 onClose={() => setModalOpen(false)}
                 transactions={transactions}
                 type={modalType}
-                title={modalType === 'income' ? 'Ingresos' : 'Gastos'}
+                title={modalType === 'income' ? 'Ingresos' : modalType === 'expense' ? 'Gastos' : 'Movimientos'}
+                onEditTransaction={onEditTransaction}
             />
         </>
     );

@@ -18,6 +18,14 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPhoto, setEditPhoto] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -60,11 +68,11 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
 
           {/* Drawer */}
           <motion.div
-            initial={{ x: '100%' }}
+            initial={{ x: isMobile ? '-100%' : '100%' }}
             animate={{ x: 0 }}
-            exit={{ x: '100%' }}
+            exit={{ x: isMobile ? '-100%' : '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-[#1E1E1E] shadow-2xl z-50"
+            className={`fixed top-0 h-full w-full max-w-md bg-white dark:bg-[#1E1E1E] shadow-2xl z-50 ${isMobile ? 'left-0' : 'right-0'}`}
           >
             <div className="flex flex-col h-full">
               {/* Header */}
@@ -112,7 +120,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
                         onClick={() => { onClose(); onMissionsClick(); }}
                         className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-white dark:bg-[#252525] border border-gray-100 dark:border-[#333] hover:bg-gray-50 dark:hover:bg-[#333] transition-all group"
                       >
-                        <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
                           <Target size={20} />
                         </div>
                         <div className="text-left flex-1">
@@ -160,7 +168,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
                         onClick={() => { onClose(); onRatesClick(); }}
                         className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-white dark:bg-[#252525] border border-gray-100 dark:border-[#333] hover:bg-gray-50 dark:hover:bg-[#333] transition-all group"
                       >
-                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <div className="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center group-hover:scale-110 transition-transform">
                           <Globe size={20} />
                         </div>
                         <div className="text-left flex-1">

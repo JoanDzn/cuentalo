@@ -66,16 +66,16 @@ const LandingPage: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="relative z-10 max-w-5xl mx-auto text-center flex flex-col items-center">
+        <div className="relative z-10 max-w-7xl mx-auto text-center flex flex-col items-center">
           {/* Main Title */}
           <motion.h1
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.8 }}
-            className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-extrabold mb-4 sm:mb-6 leading-tight"
+            className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-extrabold mb-4 sm:mb-6 leading-tight max-w-full"
           >
             Tus finanzas con{' '}
-            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent block sm:inline lg:whitespace-nowrap">
               Inteligencia Artificial
             </span>
           </motion.h1>
@@ -328,22 +328,22 @@ const LandingPage: React.FC = () => {
       {/* CTA Section */}
       <section className="relative py-32 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 backdrop-blur-md border border-white/10 rounded-[40px] p-12 lg:p-20 relative overflow-hidden">
+          <div className="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 backdrop-blur-md border border-white/10 rounded-[24px] md:rounded-[40px] p-6 md:p-12 lg:p-20 relative overflow-hidden">
 
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
 
-            <h2 className="text-4xl md:text-6xl font-extrabold mb-8 relative z-10">
+            <h2 className="text-2xl sm:text-3xl md:text-6xl font-extrabold mb-4 md:mb-8 relative z-10 leading-tight">
               Empieza a construir <br /> tu futuro, hoy.
             </h2>
-            <p className="text-xl text-white/60 mb-10 max-w-2xl mx-auto relative z-10">
+            <p className="text-base sm:text-lg md:text-xl text-white/60 mb-6 md:mb-10 max-w-2xl mx-auto relative z-10">
               Únete a miles de usuarios que ya están transformando sus finanzas con Cuentalo.
             </p>
             <button
               onClick={() => navigate('/auth', { state: { mode: 'signup' } })}
-              className="relative z-10 inline-flex items-center gap-3 px-10 py-5 bg-white text-[#0a0a0a] rounded-full text-lg font-bold shadow-xl hover:bg-gray-100 transition-all hover:scale-105"
+              className="relative z-10 inline-flex items-center gap-2 px-6 py-3 md:px-10 md:py-5 bg-white text-[#0a0a0a] rounded-full text-sm md:text-lg font-bold shadow-xl hover:bg-gray-100 transition-all hover:scale-105"
             >
               Prueba Cuentalo Gratis
-              <ArrowRight size={20} />
+              <ArrowRight size={18} />
             </button>
 
             {/* Background Glow */}

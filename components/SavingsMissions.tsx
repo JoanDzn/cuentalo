@@ -112,7 +112,7 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack }) => {
     setHealthTest(testResult);
     localStorage.setItem('cuentalo_health_test', JSON.stringify(testResult));
     setShowTest(false);
-    
+
     // Unlock missions
     setMissions(prev => prev.map(m => ({ ...m, status: 'active' as const })));
   };
@@ -150,8 +150,8 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack }) => {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white lowercase">
-              Test de Salud Financiera
+            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">
+              Test de salud financiera
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Pregunta {currentQuestion + 1} de {HEALTH_QUESTIONS.length}
@@ -170,8 +170,8 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack }) => {
         </div>
 
         {/* Question Card */}
-        <div className="flex-1 flex flex-col">
-          <div className="bg-white dark:bg-[#1E1E1E] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#333] mb-6">
+        <div className="flex-1 flex flex-col overflow-y-auto pb-32 scrollable-list">
+          <div className="bg-white dark:bg-[#1E1E1E] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#333] mb-6 flex-shrink-0">
             <div className="flex items-start gap-4 mb-6">
               <div className="w-12 h-12 rounded-[20px] bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
                 <TrendingUp size={24} />
@@ -188,11 +188,10 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack }) => {
                 <button
                   key={index}
                   onClick={() => handleAnswer(question.id, option)}
-                  className={`w-full text-left p-4 rounded-[24px] border-2 transition-all duration-300 ${
-                    answers[question.id] === option
-                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-900 dark:text-indigo-100'
-                      : 'border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-[#2C2C2C] text-gray-900 dark:text-white hover:border-indigo-300 dark:hover:border-indigo-700'
-                  }`}
+                  className={`w-full text-left p-4 rounded-[24px] border-2 transition-all duration-300 ${answers[question.id] === option
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-900 dark:text-indigo-100'
+                    : 'border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-[#2C2C2C] text-gray-900 dark:text-white hover:border-indigo-300 dark:hover:border-indigo-700'
+                    }`}
                 >
                   <span className="font-medium">{option}</span>
                 </button>
@@ -224,8 +223,8 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack }) => {
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white lowercase">
-            Misiones de Ahorro
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">
+            Misiones de ahorro
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Completa misiones y mejora tu salud financiera
@@ -243,24 +242,22 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack }) => {
           return (
             <div
               key={mission.id}
-              className={`bg-white dark:bg-[#1E1E1E] rounded-[32px] p-6 shadow-sm border transition-all duration-300 ${
-                isLocked
-                  ? 'border-gray-200 dark:border-[#333] opacity-60'
-                  : isCompleted
+              className={`bg-white dark:bg-[#1E1E1E] rounded-[32px] p-6 shadow-sm border transition-all duration-300 ${isLocked
+                ? 'border-gray-200 dark:border-[#333] opacity-60'
+                : isCompleted
                   ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10'
                   : 'border-gray-200 dark:border-[#333] hover:border-indigo-200 dark:hover:border-indigo-800'
-              }`}
+                }`}
             >
               <div className="flex items-start gap-4">
                 {/* Icon */}
                 <div
-                  className={`w-16 h-16 rounded-[20px] flex items-center justify-center flex-shrink-0 ${
-                    isLocked
-                      ? 'bg-gray-200 dark:bg-[#2C2C2C] text-gray-400'
-                      : isCompleted
+                  className={`w-16 h-16 rounded-[20px] flex items-center justify-center flex-shrink-0 ${isLocked
+                    ? 'bg-gray-200 dark:bg-[#2C2C2C] text-gray-400'
+                    : isCompleted
                       ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
                       : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                  }`}
+                    }`}
                 >
                   {isLocked ? (
                     <Lock size={24} />
@@ -292,11 +289,10 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack }) => {
                     <div className="mb-3">
                       <div className="h-2 bg-gray-200 dark:bg-[#2C2C2C] rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all duration-300 ${
-                            isCompleted
-                              ? 'bg-emerald-500'
-                              : 'bg-gradient-to-r from-indigo-600 to-purple-600'
-                          }`}
+                          className={`h-full rounded-full transition-all duration-300 ${isCompleted
+                            ? 'bg-emerald-500'
+                            : 'bg-gradient-to-r from-indigo-600 to-purple-600'
+                            }`}
                           style={{ width: `${progress}%` }}
                         />
                       </div>
