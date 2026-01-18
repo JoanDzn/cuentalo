@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Transaction, TransactionType, RateData } from '../types';
-import { ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, Info, Globe, TrendingUp, Coins, User, Target } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard } from 'lucide-react';
 import TransactionListModal from './TransactionListModal';
 
 interface DashboardProps {
@@ -11,8 +11,88 @@ interface DashboardProps {
     toggleTheme: () => void;
     rates: RateData;
     onProfileClick: () => void;
+    onSubscriptionsClick: () => void;
+    onFixedIncomeClick: () => void;
     onMissionsClick: () => void;
 }
+
+const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick }: { onExpenseClick: () => void, onIncomeClick: () => void, onMissionsClick: () => void }) => {
+    const [page, setPage] = useState(0);
+
+    const slides = [
+        {
+            title: 'Gastos Fijos',
+            msg: '¡Evita sorpresas!',
+            icon: <CreditCard size={20} className="text-white" />,
+            color: 'bg-pink-500',
+            action: onExpenseClick
+        },
+        {
+            title: 'Ingresos Fijos',
+            msg: 'Crece tu patrimonio',
+            icon: <TrendingUp size={20} className="text-white" />,
+            color: 'bg-emerald-500',
+            action: onIncomeClick
+        },
+        {
+            title: 'Metas',
+            msg: '¡Haz realidad tus sueños!',
+            icon: <Target size={20} className="text-white" />,
+            color: 'bg-blue-500',
+            action: onMissionsClick
+        }
+    ];
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setPage(prev => (prev + 1) % 3);
+        }, 6000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const current = slides[page];
+
+    return (
+        <div className="w-[92%] mx-auto mt-8 mb-4">
+            <div
+                className="bg-white dark:bg-[#111] rounded-[24px] px-5 py-5 relative overflow-hidden shadow-lg cursor-pointer active:scale-95 transition-transform border border-gray-100 dark:border-white/5"
+            >
+                {/* Click Zones */}
+                <div className="absolute inset-0 z-10 flex">
+                    <div className="w-[40%] h-full" onClick={() => current.action()} />
+                    <div className="w-[20%] h-full" onClick={() => setPage(prev => (prev + 1) % 3)} />
+                    <div className="w-[40%] h-full" onClick={() => current.action()} />
+                </div>
+
+                <div className="flex items-center justify-between relative z-20 pointer-events-none">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl ${current.color} flex items-center justify-center shadow-lg shadow-black/5 dark:shadow-white/5`}>
+                            {current.icon}
+                        </div>
+                        <div className="text-left flex flex-col justify-center h-10">
+                            <h3 className="text-base font-bold text-gray-900 dark:text-white leading-tight">{current.title}</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium leading-tight">{current.msg}</p>
+                        </div>
+                    </div>
+
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-1 flex gap-1 pointer-events-auto">
+                        {slides.map((_, i) => (
+                            <button
+                                key={i}
+                                onClick={(e) => { e.stopPropagation(); setPage(i); }}
+                                className={`h-1 rounded-full transition-all duration-300 ${page === i ? 'bg-gray-900 dark:bg-white w-4' : 'bg-gray-200 dark:bg-gray-700 w-1'}`}
+                            />
+                        ))}
+                    </div>
+
+                    <div className="p-1">
+                        <ChevronRight size={20} className="text-gray-300 dark:text-gray-600" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // Helper to get icon
 const getCategoryIcon = (category: string) => {
@@ -38,7 +118,7 @@ const getRateLabel = (rateType: string | null | undefined): string => {
     return labels[rateType] || 'Dolar';
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onMissionsClick }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onSubscriptionsClick, onFixedIncomeClick, onMissionsClick }) => {
     const [viewMode, setViewMode] = useState<'recent' | 'history'>('recent');
     const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
     const [showAllRates, setShowAllRates] = useState(false);
@@ -109,12 +189,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                         >
                             <User size={20} />
                         </button>
-                        <button
-                            onClick={onMissionsClick}
-                            className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                        >
-                            <Target size={20} />
-                        </button>
                     </div>
                     <div className="absolute top-4 right-0">
                         <button
@@ -156,53 +230,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                 </div>
                             </div>
 
-                            {/* Interactive Rate Display */}
-                            <div className="mt-4 mb-6 flex flex-col items-center">
-                                <button
-                                    onClick={() => setShowAllRates(!showAllRates)}
-                                    className="px-4 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center gap-2 group"
-                                >
-                                    <Globe size={12} className={showAllRates ? 'text-indigo-500' : ''} />
-                                    Tasa: <span className="text-emerald-600 dark:text-emerald-400">{rates.bcv.toFixed(2)} Bs</span>
-                                    <ChevronDown size={12} className={`transition-transform duration-300 ${showAllRates ? 'rotate-180' : ''}`} />
-                                </button>
-
-                                {/* Expandable Rates Sub-menu */}
-                                <div className={`overflow-hidden transition-all duration-500 ease-in-out w-full max-w-sm ${showAllRates ? 'max-h-40 opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
-                                    <div className="grid grid-cols-3 gap-2 p-2 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 shadow-inner">
-                                        {/* Dolar (BCV) */}
-                                        <div className="flex flex-col items-center gap-1 p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                                            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
-                                                <Info size={12} />
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="text-[7px] text-gray-400 uppercase font-black">Dolar</div>
-                                                <div className="text-[10px] font-bold text-gray-700 dark:text-gray-300">{rates.bcv.toFixed(2)}</div>
-                                            </div>
-                                        </div>
-                                        {/* Euro */}
-                                        <div className="flex flex-col items-center gap-1 p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                                            <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
-                                                <Globe size={12} />
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="text-[7px] text-gray-400 uppercase font-black">Euro</div>
-                                                <div className="text-[10px] font-bold text-gray-700 dark:text-gray-300">{rates.euro.toFixed(2)}</div>
-                                            </div>
-                                        </div>
-                                        {/* USDT (Binance) */}
-                                        <div className="flex flex-col items-center gap-1 p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                                            <div className="p-1.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg">
-                                                <Coins size={12} />
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="text-[7px] text-gray-400 uppercase font-black">USDT</div>
-                                                <div className="text-[10px] font-bold text-gray-700 dark:text-gray-300">{rates.usdt.toFixed(2)}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
                             <div className="flex justify-center gap-4 mt-2">
                                 <button
@@ -231,6 +258,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                     </div>
                                 </button>
                             </div>
+
+                            <RecurringCTA
+                                onExpenseClick={onSubscriptionsClick}
+                                onIncomeClick={onFixedIncomeClick}
+                                onMissionsClick={onMissionsClick}
+                            />
                         </div>
 
                         {/* Transactions List */}
@@ -405,7 +438,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                 </div>
                             )}
                         </div>
-                        <div className="absolute bottom-0 left-0 right-2 z-10 h-24 pointer-events-none bg-[#F5F5F5] dark:bg-[#121212]" style={{ maskImage: 'linear-gradient(to top, black, transparent)', WebkitMaskImage: 'linear-gradient(to top, black, transparent)' }} />
                     </div >
                 )}
 

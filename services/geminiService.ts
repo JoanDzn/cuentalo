@@ -21,7 +21,7 @@ export const parseExpenseVoiceCommand = async (transcript: string): Promise<Expe
     Current Date: ${currentDate}.
     
     Rules:
-    1. Extract the numeric amount in its ORIGINAL currency (NO conversion). Ej: "100 bs" -> amount: 100, currency: 'VES'.
+    1. Extract the numeric amount.
     2. DETECT CURRENCY: 
        - If user says "bolívares", "bolos", "bs", "soberanos" -> 'VES'.
        - If user says "dólares", "verdes", "usd", "$" or no currency specified -> 'USD'.
@@ -29,18 +29,23 @@ export const parseExpenseVoiceCommand = async (transcript: string): Promise<Expe
        - If user says "a tasa bcv", "tasa oficial" or "dolar" -> 'bcv'
        - If user says "a tasa euro" or "euro" -> 'euro'
        - If user says "a tasa binance", "usdt" or "cripto" -> 'usdt'
-       - If no rate mentioned, ALWAYS default to 'bcv'.
+       - If no rate mentioned, default to null (undefined) for USD, or 'bcv' for VES (unless context implies otherwise).
     4. Infer type: 'expense' (spending, paying) or 'income' (earning, receiving, salary).
     5. Infer category (Food, Transport, Salary, etc.).
     6. Create a short description.
     7. Default date to today if not specified.
     8. VALIDATION: If the command is NOT a financial transaction (e.g. "5 harinas", "hola", "clima"), or you cannot find a price/amount, set 'is_invalid' to true.
     
+    SPECIAL HANDLING FOR INCOME (Ingresos):
+    - If a user says "Me pagaron 65 dólares a tasa euro" (Income, USD, rate_type='euro'), strictly capture these fields. This implies an arbitration/conversion logic will be applied by the app.
+    - If a user says "Recibí 100 dólares" (no rate), rate_type should be 'bcv' or null.
+    
     Examples:
-    - "Pagué 2500bs una hamburguesa a tasa euro" -> amount: 2500, currency: 'VES', rate_type: 'euro', is_invalid: false
-    - "Anota 1000bs de gasolina a tasa usdt" -> amount: 1000, currency: 'VES', rate_type: 'usdt', is_invalid: false
-    - "Gasté 50 dólares en taxi" -> amount: 50, currency: 'USD', rate_type: 'bcv', is_invalid: false
-    - "5 harinas" -> is_invalid: true
+    - "Pagué 2500bs una hamburguesa a tasa euro" -> amount: 2500, currency: 'VES', rate_type: 'euro', type: 'expense'
+    - "Anota 1000bs de gasolina a tasa usdt" -> amount: 1000, currency: 'VES', rate_type: 'usdt', type: 'expense'
+    - "Gasté 50 dólares en taxi" -> amount: 50, currency: 'USD', rate_type: 'bcv', type: 'expense'
+    - "Me pagaron 65 dólares a tasa euro" -> amount: 65, currency: 'USD', rate_type: 'euro', type: 'income'
+    - "Cobré 100 dólares" -> amount: 100, currency: 'USD', rate_type: 'bcv', type: 'income'
     
     Output strictly JSON.
   `;

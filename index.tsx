@@ -8,9 +8,13 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}>
+      <App />
+    </GoogleOAuthProvider>
   </React.StrictMode>
 );

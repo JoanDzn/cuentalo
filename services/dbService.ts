@@ -4,12 +4,13 @@
  * Each user has their own isolated data space
  */
 
-import { Transaction, SavingsMission, FinancialHealthTest } from '../types';
+import { Transaction, SavingsMission, FinancialHealthTest, RecurringTransaction } from '../types';
 import { User } from './authService';
 
 export interface UserData {
   transactions: Transaction[];
   savingsMissions: SavingsMission[];
+  recurringTransactions?: RecurringTransaction[];
   financialHealthTest?: FinancialHealthTest;
   settings?: {
     theme?: 'light' | 'dark';
@@ -169,12 +170,25 @@ class DatabaseService {
   }
 
   /**
+   * Update user account details
+   */
+  updateUserAccount(userId: string, updates: Partial<UserAccount>): void {
+    const users = this.getAllUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      users[index] = { ...users[index], ...updates };
+      this.saveAllUsers(users);
+    }
+  }
+
+  /**
    * Initialize empty user data
    */
   private initializeUserData(userId: string): void {
     const emptyData: UserData = {
       transactions: [],
       savingsMissions: [],
+      recurringTransactions: [],
       settings: {
         theme: 'dark',
         preferredCurrency: 'USD',
@@ -203,6 +217,7 @@ class DatabaseService {
       return {
         transactions: data.transactions || [],
         savingsMissions: data.savingsMissions || [],
+        recurringTransactions: data.recurringTransactions || [],
         financialHealthTest: data.financialHealthTest,
         settings: {
           theme: data.settings?.theme || 'dark',
@@ -259,6 +274,15 @@ class DatabaseService {
   deleteUserTransaction(userId: string, transactionId: string): void {
     const userData = this.getUserData(userId);
     userData.transactions = userData.transactions.filter(t => t.id !== transactionId);
+    this.saveUserData(userId, userData);
+  }
+
+  /**
+   * Update user recurring transactions
+   */
+  updateUserRecurringTransactions(userId: string, recurring: RecurringTransaction[]): void {
+    const userData = this.getUserData(userId);
+    userData.recurringTransactions = recurring;
     this.saveUserData(userId, userData);
   }
 

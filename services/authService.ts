@@ -16,10 +16,11 @@ export interface User {
 export interface AuthService {
   signInWithEmail: (email: string, password: string) => Promise<User>;
   signUpWithEmail: (email: string, password: string, name: string) => Promise<User>;
-  signInWithGoogle: () => Promise<User>;
+  signInWithGoogle: (token: string, redirectUri?: string) => Promise<User>;
   signOut: () => Promise<void>;
   getCurrentUser: () => Promise<User | null>;
   onAuthStateChange: (callback: (user: User | null) => void) => () => void;
+  updateUserProfile: (updates: Partial<User>) => Promise<void>;
 }
 
 class DatabaseAuthService implements AuthService {
@@ -83,30 +84,45 @@ class DatabaseAuthService implements AuthService {
     return user;
   }
 
-  async signInWithGoogle(): Promise<User> {
-    await new Promise(resolve => setTimeout(resolve, 800));
+  async signInWithGoogle(token: string, redirectUri?: string): Promise<User> {
+    // Call Real Backend
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-    // For Google sign-in, create or find user
-    // For now, we'll create a temporary user
-    // In production, integrate with Google OAuth
-    const email = 'user@gmail.com';
-    let account = dbService.findUserByEmail(email);
+    try {
+      const response = await fetch(`${apiUrl}/api/auth/google`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token, redirectUri }),
+      });
 
-    if (!account) {
-      account = dbService.createUser(email, '', 'Usuario Google', 'https://via.placeholder.com/150');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al autenticar con Google');
+      }
+
+      const data = await response.json();
+
+      const user: User = {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.name,
+        photoURL: data.user.picture,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Store JWT token (not just session user)
+      localStorage.setItem('jwt_token', data.token);
+
+      this.currentUser = user;
+      this.notifyListeners(user);
+      return user;
+
+    } catch (error) {
+      console.error('Google Sign-In Error:', error);
+      throw error;
     }
-
-    const user: User = {
-      id: account.id,
-      email: account.email,
-      name: account.name,
-      photoURL: account.photoURL,
-      createdAt: account.createdAt,
-    };
-
-    this.currentUser = user;
-    this.notifyListeners(user);
-    return user;
   }
 
   async signOut(): Promise<void> {
@@ -129,6 +145,23 @@ class DatabaseAuthService implements AuthService {
     return () => {
       this.listeners.delete(callback);
     };
+  }
+
+  async updateUserProfile(updates: Partial<User>): Promise<void> {
+    if (!this.currentUser) return;
+
+    // Create updated user object
+    const updatedUser = { ...this.currentUser, ...updates };
+
+    // Update in DB
+    dbService.updateUserAccount(this.currentUser.id, {
+      name: updatedUser.name,
+      photoURL: updatedUser.photoURL
+    });
+
+    // Update session and notify
+    this.currentUser = updatedUser;
+    this.notifyListeners(updatedUser);
   }
 
   private notifyListeners(user: User | null) {

@@ -265,7 +265,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded }) => {
 
   // Idle Button (Bottom Center)
   return (
-    <div key="mic-idle" className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
+    <div key="mic-idle" className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30">
       {/* Mic Button Only */}
       <button
         onClick={startListening}

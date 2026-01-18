@@ -52,6 +52,14 @@ export interface FinancialHealthTest {
   completedAt?: string;
 }
 
+export interface RecurringTransaction {
+  id: string;
+  name: string;
+  amount: number;
+  day: number; // 1-31
+  type: TransactionType;
+}
+
 export interface SavingsMission {
   id: string;
   title: string;
