@@ -31,7 +31,8 @@ export const parseExpenseVoiceCommand = async (transcript: string): Promise<Expe
        - If user says "a tasa binance", "usdt" or "cripto" -> 'usdt'
        - If no rate mentioned, default to null (undefined) for USD, or 'bcv' for VES (unless context implies otherwise).
     4. Infer type: 'expense' (spending, paying) or 'income' (earning, receiving, salary).
-    5. Infer category (Food, Transport, Salary, etc.).
+    5. Infer category (Food, Transport, Salary, Ahorro, etc.).
+       - SPECIAL RULE FOR SAVINGS: If user says "ahorrar", "guardar", "reserva", "fondo", "chancho", or "alcancia", set category to 'Ahorro' and type to 'expense' (since it leaves the daily wallet).
     6. Create a short description.
     7. Default date to today if not specified.
     8. VALIDATION: If the command is NOT a financial transaction (e.g. "5 harinas", "hola", "clima"), or you cannot find a price/amount, set 'is_invalid' to true.
@@ -46,6 +47,7 @@ export const parseExpenseVoiceCommand = async (transcript: string): Promise<Expe
     - "Gasté 50 dólares en taxi" -> amount: 50, currency: 'USD', rate_type: 'bcv', type: 'expense'
     - "Me pagaron 65 dólares a tasa euro" -> amount: 65, currency: 'USD', rate_type: 'euro', type: 'income'
     - "Cobré 100 dólares" -> amount: 100, currency: 'USD', rate_type: 'bcv', type: 'income'
+    - "Guardé 30 dólares para el viaje" -> amount: 30, currency: 'USD', category: 'Ahorro', type: 'expense', description: 'Ahorro para viaje'
     
     Output strictly JSON.
   `;

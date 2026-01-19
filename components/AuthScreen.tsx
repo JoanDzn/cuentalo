@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, LogIn, UserPlus, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, LogIn, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { authService } from '../services/authService';
 import { useGoogleLogin } from '@react-oauth/google';
 import { AnimatedBackground } from './AnimatedBackground';
@@ -10,6 +10,7 @@ const AuthScreen: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLogin, setIsLogin] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (location.state?.mode === 'signup') {
@@ -67,12 +68,26 @@ const AuthScreen: React.FC = () => {
   };
 
   const login = useGoogleLogin({
-    onSuccess: (codeResponse) => handleGoogleCode(codeResponse.code),
-    onError: () => setError('Error al iniciar con Google'),
     flow: 'auth-code',
     ux_mode: 'redirect',
     redirect_uri: window.location.origin + '/auth'
   });
+
+  useEffect(() => {
+    const query = new URLSearchParams(location.search);
+    const code = query.get('code');
+
+    if (code && !loading) {
+      // Prevent double execution
+      const hasRun = window.sessionStorage.getItem('google_auth_running');
+      if (hasRun) return;
+
+      window.sessionStorage.setItem('google_auth_running', 'true');
+      handleGoogleCode(code).finally(() => {
+        window.sessionStorage.removeItem('google_auth_running');
+      });
+    }
+  }, [location.search]);
 
   return (
     <motion.div
@@ -200,14 +215,21 @@ const AuthScreen: React.FC = () => {
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
                 />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-[24px] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  className="w-full pl-12 pr-12 py-3 bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-[24px] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   placeholder="••••••••"
                   required
                   minLength={6}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
               {!isLogin && (
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">

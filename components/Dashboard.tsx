@@ -14,9 +14,10 @@ interface DashboardProps {
     onSubscriptionsClick: () => void;
     onFixedIncomeClick: () => void;
     onMissionsClick: () => void;
+    onSavingsClick: () => void;
 }
 
-const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick }: { onExpenseClick: () => void, onIncomeClick: () => void, onMissionsClick: () => void }) => {
+const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick, onSavingsClick }: { onExpenseClick: () => void, onIncomeClick: () => void, onMissionsClick: () => void, onSavingsClick: () => void }) => {
     const [page, setPage] = useState(0);
 
     const slides = [
@@ -35,6 +36,13 @@ const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick }: { onEx
             action: onIncomeClick
         },
         {
+            title: 'Ahorros',
+            msg: 'Págate a ti primero',
+            icon: <Coins size={20} className="text-white" />,
+            color: 'bg-indigo-500',
+            action: onSavingsClick
+        },
+        {
             title: 'Metas',
             msg: '¡Haz realidad tus sueños!',
             icon: <Target size={20} className="text-white" />,
@@ -45,7 +53,7 @@ const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick }: { onEx
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setPage(prev => (prev + 1) % 3); // Cycle through 3 slides
+            setPage(prev => (prev + 1) % 4); // Cycle through 4 slides
         }, 6000);
         return () => clearInterval(interval);
     }, [page]);
@@ -53,14 +61,14 @@ const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick }: { onEx
     const current = slides[page];
 
     return (
-        <div className="w-[92%] mx-auto mb-2">
+        <div id="recurring-carousel" className="w-[92%] mx-auto mb-2">
             <div
                 className="bg-white dark:bg-[#111] rounded-[24px] px-4 pt-3 pb-4 md:py-5 relative shadow-lg cursor-pointer active:scale-95 transition-transform border border-gray-100 dark:border-white/5"
             >
                 {/* Click Zones */}
                 <div className="absolute inset-0 z-10 flex">
                     <div className="w-[40%] h-full" onClick={() => current.action()} />
-                    <div className="w-[20%] h-full" onClick={() => setPage(prev => (prev + 1) % 3)} />
+                    <div className="w-[20%] h-full" onClick={() => setPage(prev => (prev + 1) % 4)} />
                     <div className="w-[40%] h-full" onClick={() => current.action()} />
                 </div>
 
@@ -104,6 +112,7 @@ const getCategoryIcon = (category: string) => {
     if (lower.includes('utilities') || lower.includes('servicios') || lower.includes('luz')) return <Zap size={18} />;
     if (lower.includes('salary') || lower.includes('salario') || lower.includes('pago')) return <Briefcase size={18} />;
     if (lower.includes('gift') || lower.includes('regalo')) return <Gift size={18} />;
+    if (lower.includes('ahorro') || lower.includes('saving')) return <Coins size={18} />;
     return <DollarSign size={18} />;
 };
 
@@ -118,7 +127,7 @@ const getRateLabel = (rateType: string | null | undefined): string => {
     return labels[rateType] || 'Dolar';
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onSubscriptionsClick, onFixedIncomeClick, onMissionsClick }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onSubscriptionsClick, onFixedIncomeClick, onMissionsClick, onSavingsClick }) => {
     const [viewMode, setViewMode] = useState<'recent' | 'history'>('recent');
     const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
     const [showAllRates, setShowAllRates] = useState(false);
@@ -136,9 +145,25 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const currentMonthTransactions = transactions.filter(t => t.date.startsWith(currentMonthKey));
 
-    const totalIncome = currentMonthTransactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
-    const totalExpense = currentMonthTransactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
+    // Logic: Savings (Expense) are subtracted from Income to show "Net Disposable Income".
+    // They are NOT added to Total Expense.
+    const totalIncome = currentMonthTransactions.reduce((acc, t) => {
+        if (t.type === 'income') return acc + t.amount;
+        if (t.type === 'expense' && (t.category === 'Ahorro' || t.category === 'Savings')) return acc - t.amount;
+        return acc;
+    }, 0);
+
+    const totalExpense = currentMonthTransactions.reduce((acc, t) => {
+        if (t.type === 'expense' && t.category !== 'Ahorro' && t.category !== 'Savings') return acc + t.amount;
+        return acc;
+    }, 0);
+
     const balanceUSD = totalIncome - totalExpense;
+
+    // Savings Balance Calculation (Total Accumulated)
+    const totalSavingsBalance = transactions
+        .filter(t => t.category === 'Ahorro' || t.category.toLowerCase().includes('ahorro'))
+        .reduce((acc, curr) => acc + (curr.type === 'expense' ? curr.amount : -curr.amount), 0);
 
     // Monthly Grouping Calculation
     const monthlyData = useMemo(() => {
@@ -158,7 +183,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
             if (t.type === 'income') {
                 groups[monthKey].income += t.amount;
             } else {
-                groups[monthKey].expense += t.amount;
+                // Expense
+                if (t.category === 'Ahorro' || t.category === 'Savings') {
+                    // Savings subtract from Income
+                    groups[monthKey].income -= t.amount;
+                } else {
+                    // Regular expenses increase Expense
+                    groups[monthKey].expense += t.amount;
+                }
             }
             groups[monthKey].balance = groups[monthKey].income - groups[monthKey].expense;
         });
@@ -188,6 +220,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                     {/* Absolute positioned buttons to keep logo perfectly centered */}
                     <div className="absolute top-4 left-0 flex items-center gap-2">
                         <button
+                            id="profile-btn"
                             onClick={onProfileClick}
                             className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                         >
@@ -196,6 +229,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                     </div>
                     <div className="absolute top-4 right-0">
                         <button
+                            id="theme-btn"
                             onClick={toggleTheme}
                             className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                         >
@@ -213,6 +247,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                         Resumen
                     </button>
                     <button
+                        id="history-tab"
                         onClick={() => setViewMode('history')}
                         className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-all duration-500 ${viewMode === 'history' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                     >
@@ -226,7 +261,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                         <div className="h-full overflow-y-auto scrollable-list pt-6 pb-24">
                             {/* Balance Card - Static USD */}
                             <div key="recent-view" className="mb-2 text-center">
-                                <div className="inline-flex flex-col items-center select-none">
+                                <div id="balance-card" className="inline-flex flex-col items-center select-none">
                                     <p className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">
                                         Balance Total
                                     </p>
@@ -263,30 +298,46 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                             <div className="text-xs md:text-sm font-bold text-gray-900 dark:text-gray-100">${totalExpense.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                                         </div>
                                     </button>
+
+                                    {/* SAVINGS BUTTON HIDDEN TEMPORARILY
+                                    <button
+                                        onClick={onSavingsClick}
+                                        className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] px-4 py-2 md:px-5 md:py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
+                                    >
+                                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                            <Coins size={14} className="md:w-4 md:h-4" />
+                                        </div>
+                                        <div className="text-left">
+                                            <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase">Ahorros</div>
+                                            <div className="text-xs md:text-sm font-bold text-gray-900 dark:text-gray-100">${totalSavingsBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                        </div>
+                                    </button>
+                                    */}
                                 </div>
 
                                 <RecurringCTA
                                     onExpenseClick={onSubscriptionsClick}
                                     onIncomeClick={onFixedIncomeClick}
                                     onMissionsClick={onMissionsClick}
+                                    onSavingsClick={onSavingsClick}
                                 />
                             </div>
 
                             {/* Transactions Header - Clickable for Full Menu */}
-                            <div className="mb-1 px-1">
+                            <div id="recent-transactions-section" className="mb-1 px-1">
                                 <button
                                     onClick={() => { setModalType('all'); setModalOpen(true); }}
                                     className="flex items-center gap-2 group"
                                 >
                                     <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Recientes</h2>
-                                    <ChevronRight size={16} className="text-gray-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
+                                    <ChevronRight size={16} className="mt-1 text-gray-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
                                 </button>
                             </div>
 
                             {/* Transactions List (Inline - Flow) */}
                             <div className="pt-2 pb-8">
                                 {transactions.length === 0 ? (
-                                    <div className="text-center py-20 opacity-50">
+                                    <div className="text-center py-10 opacity-50">
                                         <div className="mx-auto w-16 h-16 bg-gray-200 dark:bg-[#1E1E1E] rounded-full flex items-center justify-center text-gray-400 mb-4">
                                             <DollarSign size={24} />
                                         </div>
@@ -301,9 +352,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                                 className="group bg-white dark:bg-[#1a1a1a] p-3 rounded-2xl shadow-sm border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/50 cursor-pointer flex items-center justify-between transition-transform duration-300 hover:translate-x-1"
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${t.type === 'income'
-                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                                                        : 'bg-gray-50 dark:bg-[#2C2C2C] text-gray-600 dark:text-gray-400'
+                                                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${t.category === 'Ahorro'
+                                                        ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                                                        : t.type === 'income'
+                                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                                                            : 'bg-gray-50 dark:bg-[#2C2C2C] text-gray-600 dark:text-gray-400'
                                                         }`}>
                                                         {React.cloneElement(getCategoryIcon(t.category) as React.ReactElement<any>, { size: 16 })}
                                                     </div>
@@ -413,9 +466,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                                                         className="bg-white dark:bg-[#1a1a1a] p-3 rounded-xl flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-[#2C2C2C] border border-transparent dark:border-white/5 shadow-sm"
                                                                     >
                                                                         <div className="flex items-center gap-3">
-                                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${t.type === 'income'
-                                                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                                                                                : 'bg-gray-100 dark:bg-[#333] text-gray-600 dark:text-gray-400'
+                                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${t.category === 'Ahorro'
+                                                                                ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                                                                                : t.type === 'income'
+                                                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                                                                                    : 'bg-gray-100 dark:bg-[#333] text-gray-600 dark:text-gray-400'
                                                                                 }`}>
                                                                                 {getCategoryIcon(t.category)}
                                                                             </div>

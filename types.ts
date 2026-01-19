@@ -58,6 +58,7 @@ export interface RecurringTransaction {
   amount: number;
   day: number; // 1-31
   type: TransactionType;
+  category?: string;
 }
 
 export interface SavingsMission {

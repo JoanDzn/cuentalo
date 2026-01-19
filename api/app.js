@@ -31,6 +31,117 @@ const client = new OAuth2Client(
 // Connection to MongoDB handled inside route
 
 
+import bcrypt from 'bcryptjs';
+
+// ... (existing imports)
+
+// Manual Register
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { email, password, name } = req.body;
+
+        if (!email || !password || !name) {
+            return res.status(400).json({ message: 'Todos los campos son obligatorios' });
+        }
+
+        await connectDB();
+
+        // Check if user exists
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: 'El correo electrónico ya está registrado' });
+        }
+
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Create user
+        const user = await User.create({
+            email,
+            password: hashedPassword,
+            name,
+            role: 'user'
+        });
+
+        // Generate Token
+        const token = jwt.sign(
+            { id: user.id, email: user.email, role: user.role },
+            process.env.JWT_SECRET || 'fallback_secret',
+            { expiresIn: '7d' }
+        );
+
+        res.status(201).json({
+            message: 'Usuario registrado exitosamente',
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                picture: user.picture
+            }
+        });
+
+    } catch (error) {
+        console.error('Register Error:', error);
+        res.status(500).json({ message: 'Error en el servidor', error: error.message });
+    }
+});
+
+// Manual Login
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Email y contraseña requeridos' });
+        }
+
+        await connectDB();
+
+        // Find user (explicitly select password as it's hidden by default)
+        const user = await User.findOne({ email }).select('+password');
+
+        if (!user) {
+            return res.status(400).json({ message: 'Credenciales inválidas' });
+        }
+
+        // Check if user is Google-only (no password)
+        if (!user.password) {
+            return res.status(400).json({ message: 'Esta cuenta usa inicio de sesión con Google' });
+        }
+
+        // Verify password
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Credenciales inválidas' });
+        }
+
+        // Generate Token
+        const token = jwt.sign(
+            { id: user.id, email: user.email, role: user.role },
+            process.env.JWT_SECRET || 'fallback_secret',
+            { expiresIn: '7d' }
+        );
+
+        res.json({
+            message: 'Inicio de sesión exitoso',
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                picture: user.picture
+            }
+        });
+
+    } catch (error) {
+        console.error('Login Error:', error);
+        res.status(500).json({ message: 'Error en el servidor', error: error.message });
+    }
+});
+
+
 app.post('/api/auth/google', async (req, res) => {
     try {
         const { token } = req.body;
@@ -45,6 +156,7 @@ app.post('/api/auth/google', async (req, res) => {
         // Check if it's an Auth Code (for Redirect Flow)
         if (!token.startsWith('ey') && token.length < 256) {
             const { redirectUri } = req.body;
+            console.log('🔗 Verifying Google Code with Redirect URI:', redirectUri);
 
             const { tokens } = await client.getToken({
                 code: token,
@@ -54,14 +166,18 @@ app.post('/api/auth/google', async (req, res) => {
             client.setCredentials(tokens);
 
             if (tokens.id_token) {
+                console.log('Got ID Token, verifying...');
                 const ticket = await client.verifyIdToken({
                     idToken: tokens.id_token,
                     audience: process.env.VITE_GOOGLE_CLIENT_ID,
                 });
                 payload = ticket.getPayload();
+                console.log('Succeed verifying ID Token');
             } else {
+                console.log('No ID Token, requesting userinfo...');
                 const userInfoResponse = await client.request({ url: 'https://www.googleapis.com/oauth2/v3/userinfo' });
                 payload = userInfoResponse.data;
+                console.log('Got User Info');
             }
 
         } else if (token.length > 500 || token.startsWith('eyJ')) {

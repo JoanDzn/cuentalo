@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
 
 const UserSchema = new mongoose.Schema({
-    googleId: { type: String, required: true, unique: true },
+    googleId: { type: String, unique: true, sparse: true }, // sparse allows multiple nulls
     email: { type: String, required: true, unique: true },
+    password: { type: String, select: false }, // Don't return password by default
     name: { type: String },
     picture: { type: String },
     role: { type: String, default: 'user' },

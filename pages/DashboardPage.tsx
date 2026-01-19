@@ -7,10 +7,12 @@ import EditModal from '../components/EditModal';
 import ProfileDrawer from '../components/ProfileDrawer';
 import SavingsMissions from '../components/SavingsMissions';
 import SubscriptionsModal from '../components/SubscriptionsModal';
+import SavingsModal from '../components/SavingsModal';
 import { Transaction, ExpenseAnalysis, RateData, RecurringTransaction } from '../types';
 import { getAllRates } from '../services/exchangeRateService';
 import { authService, User } from '../services/authService';
 import { dbService } from '../services/dbService';
+import { OnboardingTour } from '../components/OnboardingTour';
 
 // Tasas por defecto (Fallback)
 const DEFAULT_RATES: RateData = {
@@ -33,6 +35,7 @@ const DashboardPage: React.FC = () => {
   const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showMissions, setShowMissions] = useState(false);
+  const [showSavings, setShowSavings] = useState(false);
   const [showSubscriptions, setShowSubscriptions] = useState(false);
   const [showRates, setShowRates] = useState(false);
   const [subscriptionModalTab, setSubscriptionModalTab] = useState<'expense' | 'income'>('expense');
@@ -44,6 +47,25 @@ const DashboardPage: React.FC = () => {
   });
   const [rates, setRates] = useState<RateData>(DEFAULT_RATES);
   const [isLoadingRate, setIsLoadingRate] = useState<boolean>(true);
+  const [showTour, setShowTour] = useState(false);
+
+  // Check Onboarding Status
+  useEffect(() => {
+    if (user) {
+      const hasCompleted = localStorage.getItem(`onboarding_completed_${user.id}`);
+      if (!hasCompleted) {
+        // Small delay to let animations settle
+        setTimeout(() => setShowTour(true), 1500);
+      }
+    }
+  }, [user]);
+
+  const handleTourComplete = () => {
+    setShowTour(false);
+    if (user) {
+      localStorage.setItem(`onboarding_completed_${user.id}`, 'true');
+    }
+  };
 
   // Fetch user and setup auth listener
   useEffect(() => {
@@ -223,6 +245,23 @@ const DashboardPage: React.FC = () => {
     setIsEditing(true);
   };
 
+  const handleSavingsTransaction = (t: any) => {
+    const newT: Transaction = {
+      id: Date.now().toString(),
+      date: new Date().toISOString().split('T')[0],
+      rateValue: undefined,
+      rateType: undefined,
+      originalCurrency: 'USD', // Default for savings
+      originalAmount: t.amount,
+      amount: t.amount, // Assumes USD for now
+      description: t.description,
+      category: t.category,
+      type: t.type
+    };
+    setTransactions(prev => [newT, ...prev]);
+    if (user) dbService.addUserTransaction(user.id, newT);
+  };
+
   return (
     <div className="relative w-full h-screen overflow-hidden font-sans text-gray-900 dark:text-gray-100 selection:bg-indigo-100 dark:selection:bg-indigo-900">
 
@@ -246,7 +285,7 @@ const DashboardPage: React.FC = () => {
             >
               {/* SavingsMissions has its own background? It probably needs opaque background to cover main one */}
               <div className="w-full h-full bg-[#F5F5F5]/90 dark:bg-[#121212]/90 backdrop-blur-md">
-                <SavingsMissions onBack={() => setShowMissions(false)} />
+                <SavingsMissions onBack={() => setShowMissions(false)} transactions={transactions} />
               </div>
             </motion.div>
           ) : (
@@ -267,6 +306,7 @@ const DashboardPage: React.FC = () => {
                 onSubscriptionsClick={() => { setSubscriptionModalTab('expense'); setShowSubscriptions(true); }}
                 onFixedIncomeClick={() => { setSubscriptionModalTab('income'); setShowSubscriptions(true); }}
                 onMissionsClick={() => setShowMissions(true)}
+                onSavingsClick={() => setShowSavings(true)}
               />
             </motion.div>
           )}
@@ -274,6 +314,13 @@ const DashboardPage: React.FC = () => {
 
         {/* Voice Interaction Layer */}
         <VoiceInput onExpenseAdded={handleNewTransaction} />
+
+        <OnboardingTour
+          isActive={showTour}
+          onComplete={handleTourComplete}
+          userName={user?.name?.split(' ')[0] || 'Amigo'}
+        />
+
 
         {/* Modals & Drawers */}
         <EditModal
@@ -293,6 +340,7 @@ const DashboardPage: React.FC = () => {
           onSubscriptionsClick={() => { setSubscriptionModalTab('expense'); setShowSubscriptions(true); }}
           onFixedIncomeClick={() => { setSubscriptionModalTab('income'); setShowSubscriptions(true); }}
           onRatesClick={() => setShowRates(true)}
+          onSavingsClick={() => setShowSavings(true)}
         />
 
         <SubscriptionsModal
@@ -304,6 +352,13 @@ const DashboardPage: React.FC = () => {
             setRecurringTransactions(items);
             if (user) dbService.updateUserRecurringTransactions(user.id, items);
           }}
+        />
+
+        <SavingsModal
+          isOpen={showSavings}
+          onClose={() => setShowSavings(false)}
+          transactions={transactions}
+          onAddTransaction={handleSavingsTransaction}
         />
 
         <AnimatePresence>

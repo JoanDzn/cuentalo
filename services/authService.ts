@@ -40,45 +40,58 @@ class DatabaseAuthService implements AuthService {
   }
 
   async signInWithEmail(email: string, password: string): Promise<User> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-    // Verify credentials against database
-    const account = dbService.verifyCredentials(email, password);
+    const response = await fetch(`${apiUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
 
-    if (!account) {
-      throw new Error('Correo electrónico o contraseña incorrectos');
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Error al iniciar sesión');
     }
 
-    // Convert to User format
     const user: User = {
-      id: account.id,
-      email: account.email,
-      name: account.name,
-      photoURL: account.photoURL,
-      createdAt: account.createdAt,
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.name,
+      photoURL: data.user.picture,
+      createdAt: new Date().toISOString(),
     };
 
+    localStorage.setItem('jwt_token', data.token);
     this.currentUser = user;
     this.notifyListeners(user);
     return user;
   }
 
   async signUpWithEmail(email: string, password: string, name: string): Promise<User> {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-    // Create user in database
-    const account = dbService.createUser(email, password, name);
+    const response = await fetch(`${apiUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name }),
+    });
 
-    // Convert to User format
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Error al registrarse');
+    }
+
     const user: User = {
-      id: account.id,
-      email: account.email,
-      name: account.name,
-      photoURL: account.photoURL,
-      createdAt: account.createdAt,
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.name,
+      photoURL: data.user.picture,
+      createdAt: new Date().toISOString(),
     };
 
+    localStorage.setItem('jwt_token', data.token);
     this.currentUser = user;
     this.notifyListeners(user);
     return user;

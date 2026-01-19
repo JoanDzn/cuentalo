@@ -268,6 +268,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded }) => {
     <div key="mic-idle" className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30">
       {/* Mic Button Only */}
       <button
+        id="voice-input-btn"
         onClick={startListening}
         className="w-16 h-16 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center group"
       >

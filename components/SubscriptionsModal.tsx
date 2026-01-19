@@ -73,7 +73,7 @@ const SubscriptionsModal: React.FC<SubscriptionsModalProps> = ({ isOpen, onClose
         onUpdate(recurringItems.filter(item => item.id !== id));
     };
 
-    const filteredItems = recurringItems.filter(item => item.type === activeTab);
+    const filteredItems = recurringItems.filter(item => item.type === activeTab && item.category !== 'Ahorro');
     const totalAmount = filteredItems.reduce((acc, curr) => acc + curr.amount, 0);
 
     return (

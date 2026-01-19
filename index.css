@@ -3,8 +3,17 @@
 @tailwind utilities;
 
 @layer base {
+
+  html,
   body {
-    @apply transition-colors duration-500 ease-in-out;
+    @apply transition-colors duration-500 ease-in-out overflow-x-hidden;
+    width: 100%;
+    position: relative;
+  }
+
+  #root {
+    @apply overflow-x-hidden;
+    width: 100%;
   }
 
 

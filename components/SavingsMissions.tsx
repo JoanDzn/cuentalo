@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Target, Lock, CheckCircle, TrendingUp, PiggyBank, Calendar, Lightbulb, ArrowLeft, Trophy } from 'lucide-react';
-import { SavingsMission, FinancialHealthTest } from '../types';
+import { SavingsMission, FinancialHealthTest, Transaction } from '../types';
 
 interface SavingsMissionsProps {
   onBack: () => void;
+  transactions: Transaction[];
 }
 
 const HEALTH_QUESTIONS = [
@@ -71,7 +72,7 @@ const INITIAL_MISSIONS: SavingsMission[] = [
   },
 ];
 
-const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack }) => {
+const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack, transactions }) => {
   const [healthTest, setHealthTest] = useState<FinancialHealthTest>(() => {
     const saved = localStorage.getItem('cuentalo_health_test');
     return saved ? JSON.parse(saved) : { completed: false, answers: [] };
@@ -83,6 +84,50 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack }) => {
     const saved = localStorage.getItem('cuentalo_missions');
     return saved ? JSON.parse(saved) : INITIAL_MISSIONS;
   });
+
+  // Effect to update savings mission progress
+  useEffect(() => {
+    // 1. Calculate Net Savings for "Emergency Fund"
+    const savingsTransactions = transactions.filter(t =>
+      t.category === 'Ahorro' || t.category.toLowerCase().includes('ahorro')
+    );
+    const netSavings = savingsTransactions.reduce((acc, curr) => {
+      // Expense = Money INTO savings (leaves wallet)
+      // Income = Money OUT of savings (enters wallet)
+      return acc + (curr.type === 'expense' ? curr.amount : -curr.amount);
+    }, 0);
+
+    // 2. Calculate Total Transactions for "Track Expenses"
+    const totalTransactions = transactions.length;
+
+    setMissions(prevMissions => prevMissions.map(mission => {
+      // Mission: Emergency Fund
+      if (mission.id === 'emergency-fund' && mission.status !== 'locked') {
+        const isCompleted = netSavings >= (mission.targetAmount || 0);
+        if (mission.currentProgress !== netSavings || (isCompleted && mission.status !== 'completed')) {
+          return {
+            ...mission,
+            currentProgress: Math.max(0, netSavings),
+            status: isCompleted ? 'completed' : 'active'
+          };
+        }
+      }
+
+      // Mission: Track Expenses (Voice/Manual)
+      if (mission.id === 'track-expenses' && mission.status !== 'locked') {
+        const isCompleted = totalTransactions >= (mission.targetProgress || 10);
+        if (mission.currentProgress !== totalTransactions || (isCompleted && mission.status !== 'completed')) {
+          return {
+            ...mission,
+            currentProgress: totalTransactions,
+            status: isCompleted ? 'completed' : 'active'
+          };
+        }
+      }
+
+      return mission;
+    }));
+  }, [transactions]);
 
   useEffect(() => {
     localStorage.setItem('cuentalo_missions', JSON.stringify(missions));
@@ -249,28 +294,38 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack }) => {
                   : 'border-gray-200 dark:border-[#333] hover:border-indigo-200 dark:hover:border-indigo-800'
                 }`}
             >
-              <div className="flex items-start gap-4">
-                {/* Icon */}
-                <div
-                  className={`w-16 h-16 rounded-[20px] flex items-center justify-center flex-shrink-0 ${isLocked
-                    ? 'bg-gray-200 dark:bg-[#2C2C2C] text-gray-400'
-                    : isCompleted
-                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
-                      : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                    }`}
-                >
-                  {isLocked ? (
-                    <Lock size={24} />
-                  ) : isCompleted ? (
-                    <CheckCircle size={24} />
-                  ) : (
-                    getIcon(mission.icon)
-                  )}
+              <div className="flex flex-col md:flex-row items-start gap-4">
+                {/* Icon & Mobile Title Wrapper */}
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                  {/* Icon */}
+                  <div
+                    className={`w-16 h-16 rounded-[20px] flex items-center justify-center flex-shrink-0 ${isLocked
+                      ? 'bg-gray-200 dark:bg-[#2C2C2C] text-gray-400'
+                      : isCompleted
+                        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                      }`}
+                  >
+                    {isLocked ? (
+                      <Lock size={24} />
+                    ) : isCompleted ? (
+                      <CheckCircle size={24} />
+                    ) : (
+                      getIcon(mission.icon)
+                    )}
+                  </div>
+
+                  {/* Mobile Only Title */}
+                  <h3 className="md:hidden text-lg font-bold text-gray-900 dark:text-white leading-tight flex-1">
+                    {mission.title}
+                  </h3>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4 mb-3">
+                <div className="flex-1 min-w-0 w-full">
+
+                  {/* Desktop Layout: Title + Desc */}
+                  <div className="hidden md:flex items-start justify-between gap-4 mb-3">
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
                         {mission.title}
@@ -282,6 +337,18 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack }) => {
                     {isCompleted && (
                       <Trophy size={20} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                     )}
+                  </div>
+
+                  {/* Mobile Layout: Desc (Title is above) */}
+                  <div className="md:hidden mb-4 mt-0">
+                    <div className="flex justify-between items-start gap-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                        {mission.description}
+                      </p>
+                      {isCompleted && (
+                        <Trophy size={20} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                      )}
+                    </div>
                   </div>
 
                   {/* Progress Bar */}

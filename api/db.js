@@ -1,44 +1,46 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const cached = { conn: null, promise: null };
 
-if (!MONGODB_URI) {
-    // Only throw in production or if needed. For now warn.
-    console.warn('Please define the MONGODB_URI environment variable inside .env.local');
-}
-
-let cached = global.mongoose;
-
-if (!cached) {
-    cached = global.mongoose = { conn: null, promise: null };
+if (!global.mongoose) {
+    global.mongoose = cached;
+} else {
+    // If we're reusing the global (e.g. in hot reload), use it
+    // but in a clean node process this doesn't matter much.
 }
 
 async function connectDB() {
-    if (!MONGODB_URI) return null; // Or throw
+    const MONGODB_URI = process.env.MONGODB_URI;
 
-    if (cached.conn) {
-        return cached.conn;
+    if (!MONGODB_URI) {
+        console.error('❌ MONGODB_URI is not defined in environment variables');
+        throw new Error('MONGODB_URI environment variable is missing');
     }
 
-    if (!cached.promise) {
+    if (global.mongoose.conn) {
+        return global.mongoose.conn;
+    }
+
+    if (!global.mongoose.promise) {
         const opts = {
             bufferCommands: false,
         };
 
-        cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-            console.log('MongoDB Connected');
+        global.mongoose.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+            console.log('✅ MongoDB Connected Successfully');
             return mongoose;
         });
     }
 
     try {
-        cached.conn = await cached.promise;
+        global.mongoose.conn = await global.mongoose.promise;
     } catch (e) {
-        cached.promise = null;
+        global.mongoose.promise = null;
+        console.error('❌ MongoDB Connection Error:', e);
         throw e;
     }
 
-    return cached.conn;
+    return global.mongoose.conn;
 }
 
 export default connectDB;
