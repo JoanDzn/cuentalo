@@ -216,7 +216,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded }) => {
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Ej: Gasté 2500bs en una hamburguesa..."
+                placeholder="Ej: Gasté 2500bs, Ahorré $50, Cobré $100..."
                 className="w-full bg-transparent border-0 border-b-2 border-gray-200 dark:border-gray-800 focus:border-indigo-500 dark:focus:border-indigo-400 text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight py-4 px-2 outline-none transition-all text-center"
               />
               <button
@@ -265,7 +265,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded }) => {
 
   // Idle Button (Bottom Center)
   return (
-    <div key="mic-idle" className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30">
+    <div key="mic-idle" className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-4">
       {/* Mic Button Only */}
       <button
         id="voice-input-btn"
@@ -274,6 +274,15 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded }) => {
       >
         <Mic size={28} className="group-hover:animate-wiggle" />
         <div className="absolute inset-0 rounded-full border border-white/10 dark:border-black/10 scale-110 opacity-0 group-hover:scale-125 group-hover:opacity-100 transition-all duration-500"></div>
+      </button>
+
+      {/* Keyboard Button (Quick Access) */}
+      <button
+        onClick={startTyping}
+        className="w-12 h-12 bg-white dark:bg-neutral-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-full shadow-lg hover:scale-110 hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 transition-all duration-300 flex items-center justify-center backdrop-blur-sm"
+        aria-label="Escribir transacción"
+      >
+        <Keyboard size={20} />
       </button>
     </div>
   );
