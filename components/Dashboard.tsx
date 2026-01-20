@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Transaction, TransactionType, RateData } from '../types';
-import { ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard, List } from 'lucide-react';
+import { ArrowLeftRight, ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard, List } from 'lucide-react';
 import TransactionListModal from './TransactionListModal';
 
 interface DashboardProps {
@@ -134,6 +134,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
     const [hasMounted, setHasMounted] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalType, setModalType] = useState<TransactionType | 'all'>('expense');
+    const [showVES, setShowVES] = useState(false);
 
     // Set mounted flag after initial render
     React.useEffect(() => {
@@ -259,60 +260,67 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                     <div className="flex-1 relative min-h-0">
                         <div className="absolute top-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-b from-[#F5F5F5] to-transparent dark:from-[#121212] z-30" />
                         <div className="h-full overflow-y-auto scrollable-list pt-6 pb-24">
-                            {/* Balance Card - Static USD */}
+                            {/* Balance Card - Toggleable USD/VES */}
                             <div key="recent-view" className="mb-2 text-center">
-                                <div id="balance-card" className="inline-flex flex-col items-center select-none">
-                                    <p className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">
-                                        Balance Total
-                                    </p>
+                                <div id="balance-card" className="inline-flex flex-col items-center select-none w-full max-w-xs mx-auto">
+                                    <div className="flex items-center gap-1 mb-1">
+                                        <p className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">
+                                            Balance Total
+                                        </p>
+                                        <button
+                                            onClick={() => setShowVES(!showVES)}
+                                            className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-all active:scale-95"
+                                            aria-label="Cambiar moneda"
+                                        >
+                                            <ArrowLeftRight size={10} />
+                                        </button>
+                                    </div>
 
-                                    <div className={`text-6xl font-extrabold tracking-tight ${balanceUSD >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
-                                        ${balanceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    <div className={`font-extrabold tracking-tight transition-all duration-300 ${showVES && (balanceUSD * rates.bcv) > 99999 ? 'text-3xl md:text-4xl' : 'text-5xl md:text-6xl'} ${balanceUSD >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
+                                        {!showVES && '$'}
+                                        {(showVES ? balanceUSD * rates.bcv : balanceUSD).toLocaleString(showVES ? 'es-VE' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        {showVES && <span className="text-2xl md:text-3xl ml-1">Bs</span>}
                                     </div>
                                 </div>
 
 
-                                <div className="flex justify-center gap-3 my-3 md:gap-4 md:my-5">
+                                {/* Simple Large Amount Display */}
+                                <div className="grid grid-cols-3 gap-2 my-3 w-full px-1">
                                     <button
                                         onClick={() => { setModalType('income'); setModalOpen(true); }}
-                                        className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] px-4 py-2 md:px-5 md:py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
+                                        className="flex items-center justify-center gap-1 bg-white dark:bg-[#1E1E1E] py-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
                                     >
-                                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                                            <ArrowUpRight size={14} className="md:w-4 md:h-4" />
+                                        <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                                            <ArrowUpRight size={18} />
                                         </div>
-                                        <div className="text-left">
-                                            <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase">Ingresos</div>
-                                            <div className="text-xs md:text-sm font-bold text-gray-900 dark:text-gray-100">${totalIncome.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                        <div className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                            ${totalIncome.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                         </div>
                                     </button>
 
                                     <button
                                         onClick={() => { setModalType('expense'); setModalOpen(true); }}
-                                        className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] px-4 py-2 md:px-5 md:py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
+                                        className="flex items-center justify-center gap-1 bg-white dark:bg-[#1E1E1E] py-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
                                     >
-                                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center">
-                                            <ArrowDownRight size={14} className="md:w-4 md:h-4" />
+                                        <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                                            <ArrowDownRight size={18} />
                                         </div>
-                                        <div className="text-left">
-                                            <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase">Gastos</div>
-                                            <div className="text-xs md:text-sm font-bold text-gray-900 dark:text-gray-100">${totalExpense.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                        <div className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                            ${totalExpense.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                         </div>
                                     </button>
 
-                                    {/* SAVINGS BUTTON HIDDEN TEMPORARILY
                                     <button
                                         onClick={onSavingsClick}
-                                        className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] px-4 py-2 md:px-5 md:py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
+                                        className="flex items-center justify-center gap-1 bg-white dark:bg-[#1E1E1E] py-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
                                     >
-                                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                                            <Coins size={14} className="md:w-4 md:h-4" />
+                                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                                            <Coins size={18} />
                                         </div>
-                                        <div className="text-left">
-                                            <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase">Ahorros</div>
-                                            <div className="text-xs md:text-sm font-bold text-gray-900 dark:text-gray-100">${totalSavingsBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                        <div className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                            ${totalSavingsBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                         </div>
                                     </button>
-                                    */}
                                 </div>
 
                                 <RecurringCTA

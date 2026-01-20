@@ -6,14 +6,21 @@
 
   html,
   body {
-    @apply transition-colors duration-500 ease-in-out overflow-x-hidden;
+    @apply transition-colors duration-500 ease-in-out;
     width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
     position: relative;
+    touch-action: pan-y;
+    /* Prevent horizontal swipe gestures from browser */
   }
 
   #root {
     @apply overflow-x-hidden;
     width: 100%;
+    height: 100%;
+    overscroll-behavior-x: none;
   }
 
 

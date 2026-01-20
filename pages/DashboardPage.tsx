@@ -313,7 +313,7 @@ const DashboardPage: React.FC = () => {
         </AnimatePresence>
 
         {/* Voice Interaction Layer */}
-        <VoiceInput onExpenseAdded={handleNewTransaction} />
+        <VoiceInput onExpenseAdded={handleNewTransaction} onMissionsClick={() => setShowMissions(true)} />
 
         <OnboardingTour
           isActive={showTour}
