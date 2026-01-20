@@ -266,42 +266,42 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
 
   // Idle Button (Bottom Center)
   return (
-    <>
-      <div key="missions-access" className="fixed bottom-8 left-6 z-30">
-        {/* Missions Button (Quick Access) */}
+    <div className="fixed bottom-8 left-0 right-0 z-50 pointer-events-none">
+      <div className="max-w-2xl mx-auto w-full px-6 flex items-center justify-between relative">
+
+        {/* Missions Button (Quick Access) - Left */}
         <button
           onClick={onMissionsClick}
-          className="w-12 h-12 bg-white dark:bg-neutral-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-full shadow-lg hover:scale-110 hover:text-blue-500 dark:hover:text-blue-400 active:scale-95 transition-all duration-300 flex items-center justify-center backdrop-blur-sm"
+          className="w-12 h-12 bg-white dark:bg-neutral-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-full shadow-lg hover:scale-110 hover:text-blue-500 dark:hover:text-blue-400 active:scale-95 transition-all duration-300 flex items-center justify-center backdrop-blur-sm pointer-events-auto"
           aria-label="Ver Metas"
         >
           <Target size={20} />
         </button>
-      </div>
 
-      <div key="mic-idle" className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30">
-        {/* Mic Button Only */}
-        <button
-          id="voice-input-btn"
-          onClick={startListening}
-          className="w-16 h-16 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center group"
-          aria-label="Iniciar grabación"
-        >
-          <Mic size={28} className="group-hover:animate-wiggle" />
-          <div className="absolute inset-0 rounded-full border border-white/10 dark:border-black/10 scale-110 opacity-0 group-hover:scale-125 group-hover:opacity-100 transition-all duration-500"></div>
-        </button>
-      </div>
+        {/* Mic Button Only - Center */}
+        <div className="absolute left-1/2 -translate-x-1/2 pointer-events-auto">
+          <button
+            id="voice-input-btn"
+            onClick={startListening}
+            className="w-16 h-16 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center group"
+            aria-label="Iniciar grabación"
+          >
+            <Mic size={28} className="group-hover:animate-wiggle" />
+            <div className="absolute inset-0 rounded-full border border-white/10 dark:border-black/10 scale-110 opacity-0 group-hover:scale-125 group-hover:opacity-100 transition-all duration-500"></div>
+          </button>
+        </div>
 
-      <div key="keyboard-access" className="fixed bottom-8 right-6 z-30">
-        {/* Keyboard Button (Quick Access) */}
+        {/* Keyboard Button (Quick Access) - Right */}
         <button
           onClick={startTyping}
-          className="w-12 h-12 bg-white dark:bg-neutral-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-full shadow-lg hover:scale-110 hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 transition-all duration-300 flex items-center justify-center backdrop-blur-sm"
+          className="w-12 h-12 bg-white dark:bg-neutral-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-full shadow-lg hover:scale-110 hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95 transition-all duration-300 flex items-center justify-center backdrop-blur-sm pointer-events-auto"
           aria-label="Escribir transacción"
         >
           <Keyboard size={20} />
         </button>
+
       </div>
-    </>
+    </div>
   );
 };
 

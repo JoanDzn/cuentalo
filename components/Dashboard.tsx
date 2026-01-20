@@ -261,8 +261,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                         <div className="absolute top-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-b from-[#F5F5F5] to-transparent dark:from-[#121212] z-30" />
                         <div className="h-full overflow-y-auto scrollable-list pt-6 pb-24">
                             {/* Balance Card - Toggleable USD/VES */}
-                            <div key="recent-view" className="mb-2 text-center">
-                                <div id="balance-card" className="inline-flex flex-col items-center select-none w-full max-w-xs mx-auto">
+                            <div key="recent-view" className="mb-2 text-center w-full">
+                                <div id="balance-card" className="flex flex-col items-center select-none w-full mx-auto">
                                     <div className="flex items-center gap-1 mb-1">
                                         <p className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">
                                             Balance Total
@@ -276,16 +276,18 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                         </button>
                                     </div>
 
-                                    <div className={`font-extrabold tracking-tight transition-all duration-300 ${showVES && (balanceUSD * rates.bcv) > 99999 ? 'text-3xl md:text-4xl' : 'text-5xl md:text-6xl'} ${balanceUSD >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
-                                        {!showVES && '$'}
-                                        {(showVES ? balanceUSD * rates.bcv : balanceUSD).toLocaleString(showVES ? 'es-VE' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        {showVES && <span className="text-2xl md:text-3xl ml-1">Bs</span>}
+                                    <div className={`font-extrabold tracking-tighter w-full flex justify-center items-baseline gap-1 ${showVES ? ((balanceUSD * rates.bcv) > 99999 ? 'text-3xl md:text-5xl' : 'text-5xl md:text-6xl') : 'text-[4rem] leading-none md:text-7xl'} ${balanceUSD >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
+                                        <span className="flex items-baseline">
+                                            {!showVES && '$'}
+                                            {(showVES ? balanceUSD * rates.bcv : balanceUSD).toLocaleString(showVES ? 'es-VE' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                        {showVES && <span className="text-2xl md:text-3xl font-bold">Bs</span>}
                                     </div>
                                 </div>
 
 
                                 {/* Simple Large Amount Display */}
-                                <div className="grid grid-cols-3 gap-2 my-3 w-full px-1">
+                                <div className="grid grid-cols-3 gap-2 my-3 w-full px-1 overflow-visible">
                                     <button
                                         onClick={() => { setModalType('income'); setModalOpen(true); }}
                                         className="flex items-center justify-center gap-1 bg-white dark:bg-[#1E1E1E] py-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
