@@ -23,8 +23,16 @@ export const authService = {
       body: JSON.stringify({ email, password })
     });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("Login response parse error:", text);
+      throw new Error(`Server returned non-JSON response: ${res.status} ${res.statusText}`);
+    }
+
+    if (!res.ok) throw new Error(data.message || 'Error de autenticación');
 
     localStorage.setItem('jwt_token', data.accessToken);
     // Store refresh token in HTTPOnly cookie ideally, or localStorage if necessary

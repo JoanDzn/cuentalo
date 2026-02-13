@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/User.js';
 import { RefreshToken } from '../models/RefreshToken.js';
+import { AdminLog } from '../models/AdminLog.js';
 import connectDB from '../db.js';
 
 const router = express.Router();
@@ -105,7 +106,6 @@ router.post('/login', async (req, res) => {
 
         // LOGGING
         try {
-            const { AdminLog } = await import('../models/AdminLog.js');
             await AdminLog.create({
                 type: 'LOGIN',
                 userId: user._id,

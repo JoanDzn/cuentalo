@@ -17,6 +17,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Debug Middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+    next();
+});
+
 import transactionRoutes from './routes/transactions.js';
 import missionRoutes from './routes/missions.js';
 

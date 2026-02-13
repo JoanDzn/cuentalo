@@ -13,6 +13,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [transcript, setTranscript] = useState('');
   const [inputText, setInputText] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const isDragging = useRef(false);
 
   // Animation values for swipe interaction
@@ -64,52 +65,71 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
 
   // initialize Web Speech API
   useEffect(() => {
-    if ('webkitSpeechRecognition' in window) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false; // Mobile friendly
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'es-ES'; // Force Spanish
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-      recognitionRef.current.onstart = () => {
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false; // Mobile friendly
+      recognition.interimResults = true;
+      recognition.lang = 'es-ES'; // Force Spanish
+
+      // Debugging Events
+      recognition.onaudiostart = () => console.log('Audio capture started');
+      recognition.onsoundstart = () => console.log('Sound detected');
+      recognition.onspeechstart = () => console.log('Speech detected');
+
+      recognition.onstart = () => {
+        console.log('Voice recognition started');
         processingRef.current = false;
         setTranscript('');
+        setErrorMessage('');
       };
 
-      recognitionRef.current.onresult = (event: any) => {
+      recognition.onresult = (event: any) => {
         let interimTranscript = '';
+        console.log('Result received', event.results); // Debug log
+
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           interimTranscript += event.results[i][0].transcript;
         }
         setTranscript(interimTranscript);
 
-        if (event.results[0].isFinal) {
-          processValues(event.results[0][0].transcript);
+        const lastResult = event.results[event.results.length - 1];
+        if (lastResult.isFinal) {
+          console.log('Final result:', lastResult[0].transcript);
+          processValues(lastResult[0].transcript);
         }
       };
 
-      recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech error", event);
-        if (event.error === 'no-speech' || event.error === 'aborted') {
-          // Ignore silent errors or manual aborts
-          return;
-        }
-        // Fallback or restart logic could go here
+      recognition.onerror = (event: any) => {
+        console.error("Speech error", event.error);
+        if (event.error === 'no-speech') return; // Commonly ignored
+        if (event.error === 'aborted') return;
+
+        setErrorMessage(getErrorDescription(event.error));
         setState(AppState.ERROR);
-        setTimeout(() => setState(AppState.IDLE), 2000);
+        setTimeout(() => {
+          setState(AppState.IDLE);
+          setErrorMessage('');
+        }, 3000);
       };
 
-      recognitionRef.current.onend = () => {
-        // Auto-restart if we think it stopped prematurely? No, better to let user click again.
-        if (state === AppState.LISTENING && !processingRef.current) {
-          // Check if we got result?
-          setTimeout(() => {
-            if (state === AppState.LISTENING) setState(AppState.IDLE);
-          }, 1000);
-        }
+      recognition.onend = () => {
+        console.log('Recognition ended');
+        // We can't easily check 'state' here without adding it to deps, 
+        // but we can trust the flow: if it ends, we just go IDLE unless we were processing.
+        // We'll use a timeout to let any final result process first.
+        setTimeout(() => {
+          if (!processingRef.current) {
+            // If we are still "LISTENING" in UI but stopped, go IDLE
+            setState(current => current === AppState.LISTENING ? AppState.IDLE : current);
+          }
+        }, 500);
       };
+
+      recognitionRef.current = recognition;
     }
-  }, [processValues, state]);
+  }, [processValues]); // Only re-run if processValues changes (which is useCallback'd and stable)
 
   // Fallback: MediaRecorder Logic (For browsers without SpeechRecognition)
   const startRecordingFallback = async () => {
@@ -149,28 +169,36 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
 
   const startListening = () => {
     if (recognitionRef.current) {
-      try {
-        // Stop any previous instance just in case
-        recognitionRef.current.abort();
-      } catch (e) {
-        // Ignore abort errors on start
-      }
+      if (processingRef.current) return;
 
-      // Small delay to allow abort to process if needed
-      setTimeout(() => {
-        try {
-          setTranscript('');
-          setState(AppState.LISTENING);
-          processingRef.current = false;
-          recognitionRef.current.start();
-        } catch (e) {
-          console.error("Start error:", e);
+      // Reset state immediately
+      setTranscript('');
+      setErrorMessage('');
+      setState(AppState.LISTENING);
+
+      try {
+        recognitionRef.current.lang = 'es-ES'; // Ensure Spanish
+        recognitionRef.current.start();
+      } catch (e: any) {
+        console.error("Start error:", e);
+        // If already started, we might need to stop and restart, 
+        // but often just ignoring it is safer if we want to keep listening.
+        // If it's a different error, try to recover.
+        if (e?.message?.includes('already started')) {
+          // Already listening, do nothing or maybe restart if stuck?
+          // Let's assume it's working.
+        } else {
+          // Hard reset attempt
+          try {
+            recognitionRef.current.stop();
+          } catch (e) { }
+
           setState(AppState.ERROR);
+          setErrorMessage("Error al iniciar. Intenta de nuevo.");
           setTimeout(() => setState(AppState.IDLE), 2000);
         }
-      }, 100);
+      }
     } else {
-      // Use MediaRecorder Fallback
       startRecordingFallback();
     }
   };
@@ -202,12 +230,16 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
     processingRef.current = false;
   };
 
-  // Focus input
-  useEffect(() => {
-    if (state === AppState.TYPING && inputRef.current) {
-      inputRef.current.focus();
+  const getErrorDescription = (error: string) => {
+    switch (error) {
+      case 'no-speech': return 'No se detectó voz.';
+      case 'audio-capture': return 'No se detectó micrófono.';
+      case 'not-allowed': return 'Permiso denegado.';
+      case 'network': return 'Error de red. Verifica conexión.';
+      case 'aborted': return 'Cancelado.';
+      default: return 'Error: ' + error;
     }
-  }, [state]);
+  };
 
   return (
     <AnimatePresence>
@@ -305,7 +337,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
             {state === AppState.LISTENING ? "Te escucho..." :
               state === AppState.PROCESSING ? "Procesando..." :
                 state === AppState.SUCCESS ? "¡Listo!" :
-                  state === AppState.ERROR ? "Error" : "Escribe"}
+                  state === AppState.ERROR ? (errorMessage || "Error") : "Escribe"}
           </motion.h2>
 
           {/* Dynamic Content Area */}
@@ -366,8 +398,6 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
             <span className="text-xs font-medium">Desliza</span>
           </motion.div>
 
-
-
           <motion.div
             id="voice-input-btn"
             drag
@@ -381,7 +411,8 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
               isDragging.current = true;
             }}
             onTap={() => {
-              if (!isDragging.current && state === AppState.IDLE) {
+              // Only trigger tap if we haven't dragged significantly
+              if (x.get() < 5 && state === AppState.IDLE) {
                 startListening();
               }
             }}
@@ -391,7 +422,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
                 setState(AppState.TYPING);
                 setInputText('');
               }
-              // Reset dragging state after a short delay to prevent immediate tap firing
+              // Reset dragging state
               setTimeout(() => {
                 isDragging.current = false;
               }, 100);
