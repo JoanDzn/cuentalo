@@ -71,11 +71,11 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
 
           {/* Drawer */}
           <motion.div
-            initial={{ x: isMobile ? '-100%' : '100%' }}
+            initial={{ x: '100%' }}
             animate={{ x: 0 }}
-            exit={{ x: isMobile ? '-100%' : '100%' }}
+            exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className={`fixed top-0 h-full w-full max-w-md bg-white dark:bg-[#1E1E1E] shadow-2xl z-50 ${isMobile ? 'left-0' : 'right-0'}`}
+            className={`fixed top-0 h-full w-full max-w-md bg-white dark:bg-[#1E1E1E] shadow-2xl z-50 right-0`}
           >
             <div className="flex flex-col h-full">
               {/* Header */}

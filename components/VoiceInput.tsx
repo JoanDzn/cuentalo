@@ -368,7 +368,6 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
           <motion.div
             id="voice-input-btn"
             drag
-            dragDirectionLock
             dragConstraints={{ left: 0, right: 100, top: -200, bottom: 0 }}
             dragElastic={0.1}
             dragSnapToOrigin
@@ -379,15 +378,13 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
               if (state === AppState.IDLE) startListening();
             }}
             onDragEnd={(_, info) => {
-              if (info.offset.x > 50) {
+              if (info.offset.x > 40) {
                 // Swipe Right -> Keyboard
                 setState(AppState.TYPING);
                 setInputText('');
-              } else if (Math.abs(info.offset.y) > 20 || Math.abs(info.offset.x) > 20) {
-                // Significant drag (up or small side) -> Start Listening
-                if (state === AppState.IDLE) startListening();
               }
-              // If it was a tap (little movement), onTap handles it.
+              // Usage: Tap to listen. Swipe Right to type.
+              // Dragging elsewhere does nothing (snaps back).
             }}
             // onClick removed as onDragEnd handles both tap and drag-release now
             className="pointer-events-auto cursor-grab active:cursor-grabbing w-16 h-16 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-2xl flex items-center justify-center z-50 touch-none"
