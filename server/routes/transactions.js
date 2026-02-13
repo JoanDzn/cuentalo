@@ -14,7 +14,7 @@ router.get('/', protect, async (req, res) => {
             query.updatedAt = { $gt: new Date(lastSync) };
         }
 
-        const transactions = await Transaction.find(query).sort({ date: -1 });
+        const transactions = await Transaction.find(query).sort({ createdAt: -1 });
         res.json(transactions);
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });

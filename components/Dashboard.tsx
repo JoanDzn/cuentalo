@@ -151,10 +151,44 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
         setHasMounted(true);
     }, []);
 
+    // Sort transactions globally for consistent display (Newest First)
+    // Use createdAt for precise time-based ordering, fallback to date field
+    const getTransactionTimestamp = (t: Transaction) => {
+        // Priority 1: Use createdAt if available (includes time)
+        if ((t as any).createdAt) {
+            const ts = new Date((t as any).createdAt).getTime();
+            if (!isNaN(ts)) return ts;
+        }
+
+        // Priority 2: Parse date field
+        if (!t.date) return 0;
+        const d = new Date(t.date);
+        if (!isNaN(d.getTime())) return d.getTime();
+
+        // Priority 3: Try DD/MM/YYYY format
+        const parts = t.date.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+        if (parts) {
+            return new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1])).getTime();
+        }
+        return 0;
+    };
+
+    const sortedTransactions = useMemo(() => {
+        return [...transactions].sort((a, b) => {
+            // Descending: Newest (Higher TS) first
+            return getTransactionTimestamp(b) - getTransactionTimestamp(a);
+        });
+    }, [transactions]);
+
     // Current Month Balance Calculation
     const now = new Date();
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const currentMonthTransactions = transactions.filter(t => t.date.startsWith(currentMonthKey));
+    const currentMonthTransactions = sortedTransactions.filter(t => {
+        // Ensure accurate filtering even with different date formats
+        if (t.date.includes('T')) return t.date.startsWith(currentMonthKey);
+        // Fallback for simple dates
+        return t.date.startsWith(currentMonthKey);
+    });
 
     // Logic: Savings (Expense) are subtracted from Income to show "Net Disposable Income".
     // They are NOT added to Total Expense.
@@ -172,7 +206,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
     const balanceUSD = totalIncome - totalExpense;
 
     // Savings Balance Calculation (Total Accumulated)
-    const totalSavingsBalance = transactions
+    const totalSavingsBalance = sortedTransactions
         .filter(t => t.category === 'Ahorro' || t.category.toLowerCase().includes('ahorro'))
         .reduce((acc, curr) => acc + (curr.type === 'expense' ? curr.amount : -curr.amount), 0);
 
@@ -180,7 +214,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
     const monthlyData = useMemo(() => {
         const groups: Record<string, { income: number; expense: number; balance: number; transactions: Transaction[] }> = {};
 
-        transactions.forEach(t => {
+        sortedTransactions.forEach(t => {
             // Create key YYYY-MM
             const monthKey = t.date.substring(0, 7);
 
@@ -208,7 +242,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
 
         // Sort descending (newest months first)
         return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
-    }, [transactions]);
+    }, [sortedTransactions]);
 
     const formatMonth = (monthKey: string) => {
         const [year, month] = monthKey.split('-');
@@ -347,7 +381,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
 
                             {/* Transactions List (Inline - Flow) */}
                             <div className="pt-2 pb-8 px-2">
-                                {transactions.length === 0 ? (
+                                {sortedTransactions.length === 0 ? (
                                     <div className="text-center py-10 opacity-50">
                                         <div className="mx-auto w-16 h-16 bg-gray-200 dark:bg-[#1E1E1E] rounded-full flex items-center justify-center text-gray-400 mb-4">
                                             <DollarSign size={24} />
@@ -356,7 +390,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
-                                        {transactions.map((t) => (
+                                        {sortedTransactions.map((t) => (
                                             <div
                                                 key={t.id}
                                                 onClick={() => onEditTransaction(t)}
@@ -522,7 +556,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
             <TransactionListModal
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
-                transactions={transactions}
+                transactions={sortedTransactions}
                 type={modalType}
                 title={modalType === 'income' ? 'Ingresos' : modalType === 'expense' ? 'Gastos' : 'Movimientos'}
                 onEditTransaction={onEditTransaction}

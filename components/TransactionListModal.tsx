@@ -37,10 +37,31 @@ const getRateLabel = (rateType: string | null | undefined): string => {
 const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onClose, transactions, type, title, onEditTransaction }) => {
     if (!isOpen) return null;
 
+    // Use createdAt for precise time-based ordering, fallback to date field
+    const getTransactionTimestamp = (t: Transaction) => {
+        // Priority 1: Use createdAt if available (includes time)
+        if ((t as any).createdAt) {
+            const ts = new Date((t as any).createdAt).getTime();
+            if (!isNaN(ts)) return ts;
+        }
+
+        // Priority 2: Parse date field
+        if (!t.date) return 0;
+        const d = new Date(t.date);
+        if (!isNaN(d.getTime())) return d.getTime();
+
+        // Priority 3: Try DD/MM/YYYY format
+        const parts = t.date.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+        if (parts) return new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1])).getTime();
+        return 0;
+    };
+
     // Filter by type and sort by date (most recent first)
     const filteredTransactions = transactions
         .filter(t => type === 'all' || t.type === type)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        .sort((a, b) => {
+            return getTransactionTimestamp(b) - getTransactionTimestamp(a);
+        });
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">

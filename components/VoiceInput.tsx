@@ -64,83 +64,60 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
     }
   }, []);
 
-  // initialize Web Speech API
-  useEffect(() => {
+  // No initial useEffect. We create recognition on demand for iOS/Mobile stability.
+
+  const initializeRecognition = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return null;
 
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false; // Mobile friendly
-      recognition.interimResults = true;
-      recognition.lang = 'es-ES'; // Force Spanish
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'es-ES';
 
-      // Debugging Events
-      recognition.onaudiostart = () => console.log('Audio capture started');
-      recognition.onsoundstart = () => console.log('Sound detected');
-      recognition.onspeechstart = () => console.log('Speech detected');
+    recognition.onstart = () => {
+      console.log('Voice recognition started');
+      processingRef.current = false;
+      setTranscript('');
+      setErrorMessage('');
+    };
 
-      recognition.onstart = () => {
-        console.log('Voice recognition started');
-        processingRef.current = false;
-        setTranscript('');
+    recognition.onresult = (event: any) => {
+      let interimTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        interimTranscript += event.results[i][0].transcript;
+      }
+      setTranscript(interimTranscript);
+
+      const lastResult = event.results[event.results.length - 1];
+      if (lastResult.isFinal) {
+        processValues(lastResult[0].transcript);
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech error", event.error);
+      if (event.error === 'no-speech') return;
+      if (event.error === 'aborted') return;
+      setErrorMessage(getErrorDescription(event.error));
+      setState(AppState.ERROR);
+      setTimeout(() => {
+        setState(AppState.IDLE);
         setErrorMessage('');
-      };
+      }, 3000);
+    };
 
-      recognition.onresult = (event: any) => {
-        let interimTranscript = '';
-        console.log('Result received', event.results); // Debug log
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          interimTranscript += event.results[i][0].transcript;
+    recognition.onend = () => {
+      // Check if restarting or just ending
+      setTimeout(() => {
+        if (!processingRef.current) {
+          setState(current => current === AppState.LISTENING ? AppState.IDLE : current);
         }
-        setTranscript(interimTranscript);
+      }, 500);
+    };
 
-        const lastResult = event.results[event.results.length - 1];
-        if (lastResult.isFinal) {
-          console.log('Final result:', lastResult[0].transcript);
-          processValues(lastResult[0].transcript);
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        console.error("Speech error", event.error);
-        if (event.error === 'no-speech') return; // Commonly ignored
-        if (event.error === 'aborted') return;
-
-        setErrorMessage(getErrorDescription(event.error));
-        setState(AppState.ERROR);
-        setTimeout(() => {
-          setState(AppState.IDLE);
-          setErrorMessage('');
-        }, 3000);
-      };
-
-      recognition.onend = () => {
-        console.log('Recognition ended');
-
-        // If it ended too quickly (e.g. < 1s) without processing, it might be a mobile glitch.
-        // Try to restart ONCE if it was a quick drop.
-        const timeSinceStart = Date.now() - startTimeRef.current;
-        if (timeSinceStart < 1000 && !processingRef.current) {
-          console.log('Ended too quickly, attempting restart...');
-          try {
-            recognition.start();
-            return; // Don't go to IDLE
-          } catch (e) {
-            console.error("Restart failed", e);
-          }
-        }
-
-        setTimeout(() => {
-          if (!processingRef.current) {
-            setState(current => current === AppState.LISTENING ? AppState.IDLE : current);
-          }
-        }, 500);
-      };
-
-      recognitionRef.current = recognition;
-    }
-  }, [processValues]); // Only re-run if processValues changes (which is useCallback'd and stable)
+    return recognition;
+  };
 
   // Fallback: MediaRecorder Logic (For browsers without SpeechRecognition)
   const startRecordingFallback = async () => {
@@ -178,36 +155,30 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
     }
   };
 
-  const startListening = () => {
-    if (recognitionRef.current) {
-      if (processingRef.current) return;
 
-      // Reset state immediately
+  const startListening = () => {
+    if (processingRef.current) return;
+
+    // Stop existing
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (e) { }
+    }
+
+    const recognition = initializeRecognition();
+
+    if (recognition) {
+      recognitionRef.current = recognition;
+
       setTranscript('');
       setErrorMessage('');
       setState(AppState.LISTENING);
       startTimeRef.current = Date.now();
 
       try {
-        recognitionRef.current.start();
-      } catch (e: any) {
-        console.error("Start error:", e);
-        // If already started, we might need to stop and restart, 
-        // but often just ignoring it is safer if we want to keep listening.
-        // If it's a different error, try to recover.
-        if (e?.message?.includes('already started')) {
-          // Already listening, do nothing or maybe restart if stuck?
-          // Let's assume it's working.
-        } else {
-          // Hard reset attempt
-          try {
-            recognitionRef.current.stop();
-          } catch (e) { }
-
-          setState(AppState.ERROR);
-          setErrorMessage("Error al iniciar. Intenta de nuevo.");
-          setTimeout(() => setState(AppState.IDLE), 2000);
-        }
+        recognition.start();
+      } catch (e) {
+        console.error("Start error", e);
+        setState(AppState.ERROR);
       }
     } else {
       startRecordingFallback();
