@@ -26,6 +26,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const processingRef = useRef(false);
+  const startTimeRef = useRef<number>(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const onExpenseAddedRef = useRef(onExpenseAdded);
 
@@ -116,12 +117,22 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
 
       recognition.onend = () => {
         console.log('Recognition ended');
-        // We can't easily check 'state' here without adding it to deps, 
-        // but we can trust the flow: if it ends, we just go IDLE unless we were processing.
-        // We'll use a timeout to let any final result process first.
+
+        // If it ended too quickly (e.g. < 1s) without processing, it might be a mobile glitch.
+        // Try to restart ONCE if it was a quick drop.
+        const timeSinceStart = Date.now() - startTimeRef.current;
+        if (timeSinceStart < 1000 && !processingRef.current) {
+          console.log('Ended too quickly, attempting restart...');
+          try {
+            recognition.start();
+            return; // Don't go to IDLE
+          } catch (e) {
+            console.error("Restart failed", e);
+          }
+        }
+
         setTimeout(() => {
           if (!processingRef.current) {
-            // If we are still "LISTENING" in UI but stopped, go IDLE
             setState(current => current === AppState.LISTENING ? AppState.IDLE : current);
           }
         }, 500);
@@ -175,9 +186,9 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
       setTranscript('');
       setErrorMessage('');
       setState(AppState.LISTENING);
+      startTimeRef.current = Date.now();
 
       try {
-        recognitionRef.current.lang = 'es-ES'; // Ensure Spanish
         recognitionRef.current.start();
       } catch (e: any) {
         console.error("Start error:", e);
