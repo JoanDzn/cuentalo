@@ -13,6 +13,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
   const [state, setState] = useState<AppState>(AppState.IDLE);
   const [transcript, setTranscript] = useState('');
   const [inputText, setInputText] = useState('');
+  const isDragging = useRef(false);
 
   // Animation values for swipe interaction
   const x = useMotionValue(0);
@@ -365,26 +366,35 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
             <span className="text-xs font-medium">Desliza</span>
           </motion.div>
 
+
+
           <motion.div
             id="voice-input-btn"
             drag
-            dragConstraints={{ left: 0, right: 100, top: -200, bottom: 0 }}
+            dragConstraints={{ left: 0, right: 100, top: 0, bottom: 0 }}
             dragElastic={0.1}
             dragSnapToOrigin
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 1.5 }}
             style={{ x, scale: bgScale }}
+            onDragStart={() => {
+              isDragging.current = true;
+            }}
             onTap={() => {
-              if (state === AppState.IDLE) startListening();
+              if (!isDragging.current && state === AppState.IDLE) {
+                startListening();
+              }
             }}
             onDragEnd={(_, info) => {
-              if (info.offset.x > 40) {
+              if (info.offset.x > 30) {
                 // Swipe Right -> Keyboard
                 setState(AppState.TYPING);
                 setInputText('');
               }
-              // Usage: Tap to listen. Swipe Right to type.
-              // Dragging elsewhere does nothing (snaps back).
+              // Reset dragging state after a short delay to prevent immediate tap firing
+              setTimeout(() => {
+                isDragging.current = false;
+              }, 100);
             }}
             // onClick removed as onDragEnd handles both tap and drag-release now
             className="pointer-events-auto cursor-grab active:cursor-grabbing w-16 h-16 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-2xl flex items-center justify-center z-50 touch-none"
