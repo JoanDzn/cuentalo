@@ -1,243 +1,141 @@
-/**
- * Authentication Service
- * Uses database service for user management
- */
-
-import { dbService } from './dbService';
-
 export interface User {
   id: string;
   email: string;
   name: string;
   photoURL?: string;
   createdAt: string;
+  role?: 'user' | 'ADMIN';
 }
 
-export interface AuthService {
-  signInWithEmail: (email: string, password: string) => Promise<User>;
-  signUpWithEmail: (email: string, password: string, name: string) => Promise<User>;
-  signInWithGoogle: (token: string, redirectUri?: string) => Promise<User>;
-  signOut: () => Promise<void>;
-  getCurrentUser: () => Promise<User | null>;
-  onAuthStateChange: (callback: (user: User | null) => void) => () => void;
-  updateUserProfile: (updates: Partial<User>) => Promise<void>;
-}
+export const authService = {
+  // ... (previous methods)
+  // Need to update login methods to store token and remove local DB dependency
 
-class DatabaseAuthService implements AuthService {
-  private currentUser: User | null = null;
-  private listeners: Set<(user: User | null) => void> = new Set();
-  private readonly SESSION_KEY = 'cuentalo_session';
-
-  constructor() {
-    const stored = localStorage.getItem(this.SESSION_KEY);
-    if (stored) {
-      try {
-        this.currentUser = JSON.parse(stored);
-      } catch (e) {
-        localStorage.removeItem(this.SESSION_KEY);
-      }
-    }
-  }
+  listeners: new Set<(user: User | null) => void>(),
+  currentUser: null as User | null,
 
   async signInWithEmail(email: string, password: string): Promise<User> {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
-    const response = await fetch(`${apiUrl}/api/auth/login`, {
+    const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+    const API_URL = `${BASE_URL}/api`;
+    const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password })
     });
 
-    const data = await response.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
 
-    if (!response.ok) {
-      throw new Error(data.message || 'Error al iniciar sesión');
-    }
+    localStorage.setItem('jwt_token', data.accessToken);
+    // Store refresh token in HTTPOnly cookie ideally, or localStorage if necessary
+    if (data.refreshToken) localStorage.setItem('refresh_token', data.refreshToken);
 
-    const user: User = {
-      id: data.user.id,
-      email: data.user.email,
-      name: data.user.name,
-      photoURL: data.user.picture,
-      createdAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem('jwt_token', data.token);
+    const user = { ...data.user, createdAt: new Date().toISOString() };
     this.currentUser = user;
     this.notifyListeners(user);
     return user;
-  }
+  },
 
   async signUpWithEmail(email: string, password: string, name: string): Promise<User> {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
-    const response = await fetch(`${apiUrl}/api/auth/register`, {
+    const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+    const API_URL = `${BASE_URL}/api`;
+    const res = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password, name })
     });
 
-    const data = await response.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
 
-    if (!response.ok) {
-      throw new Error(data.message || 'Error al registrarse');
-    }
+    localStorage.setItem('jwt_token', data.accessToken);
+    if (data.refreshToken) localStorage.setItem('refresh_token', data.refreshToken);
 
-    const user: User = {
-      id: data.user.id,
-      email: data.user.email,
-      name: data.user.name,
-      photoURL: data.user.picture,
-      createdAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem('jwt_token', data.token);
+    const user = { ...data.user, createdAt: new Date().toISOString() };
     this.currentUser = user;
     this.notifyListeners(user);
     return user;
-  }
+  },
 
   async signInWithGoogle(token: string, redirectUri?: string): Promise<User> {
-    // Call Real Backend
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+    const API_URL = `${BASE_URL}/api`;
+    const res = await fetch(`${API_URL}/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, redirectUri })
+    });
 
-    try {
-      const response = await fetch(`${apiUrl}/api/auth/google`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token, redirectUri }),
-      });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al autenticar con Google');
-      }
+    localStorage.setItem('jwt_token', data.accessToken);
+    if (data.refreshToken) localStorage.setItem('refresh_token', data.refreshToken);
 
-      const data = await response.json();
-
-      const user: User = {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.name,
-        photoURL: data.user.picture,
-        createdAt: new Date().toISOString(),
-      };
-
-      // Store JWT token (not just session user)
-      localStorage.setItem('jwt_token', data.token);
-
-      this.currentUser = user;
-      this.notifyListeners(user);
-      return user;
-
-    } catch (error) {
-      console.error('Google Sign-In Error:', error);
-      throw error;
-    }
-  }
+    const user = { ...data.user, createdAt: new Date().toISOString() };
+    this.currentUser = user;
+    this.notifyListeners(user);
+    return user;
+  },
 
   async signOut(): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 300));
     this.currentUser = null;
-    localStorage.removeItem(this.SESSION_KEY);
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('cuentalo_session');
     this.notifyListeners(null);
-  }
-
-  async getCurrentUser(): Promise<User | null> {
-    return this.currentUser;
-  }
+  },
 
   onAuthStateChange(callback: (user: User | null) => void): () => void {
     this.listeners.add(callback);
-    // Immediately call with current user
-    callback(this.currentUser);
+    // Restore session from localStorage if token exists
+    const token = localStorage.getItem('jwt_token');
+    const storedSession = localStorage.getItem('cuentalo_session');
 
-    // Return unsubscribe function
-    return () => {
-      this.listeners.delete(callback);
-    };
-  }
+    if (token && storedSession && !this.currentUser) {
+      try {
+        this.currentUser = JSON.parse(storedSession);
+      } catch (e) {
+        this.currentUser = null;
+      }
+    }
+
+    callback(this.currentUser);
+    return () => { this.listeners.delete(callback); };
+  },
+
+  notifyListeners(user: User | null) {
+    if (user) localStorage.setItem('cuentalo_session', JSON.stringify(user));
+    else localStorage.removeItem('cuentalo_session');
+    this.listeners.forEach(cb => cb(user));
+  },
 
   async updateUserProfile(updates: Partial<User>): Promise<void> {
-    if (!this.currentUser) return;
+    // Implement profile update API call
+  },
 
-    // Create updated user object
-    const updatedUser = { ...this.currentUser, ...updates };
+  async refreshUser(): Promise<User | null> {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) return null;
 
-    // Update in DB
-    dbService.updateUserAccount(this.currentUser.id, {
-      name: updatedUser.name,
-      photoURL: updatedUser.photoURL
-    });
+    const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '') + '/api';
 
-    // Update session and notify
-    this.currentUser = updatedUser;
-    this.notifyListeners(updatedUser);
-  }
+    try {
+      const res = await fetch(`${API_URL}/auth/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
 
-  private notifyListeners(user: User | null) {
-    if (user) {
-      localStorage.setItem(this.SESSION_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(this.SESSION_KEY);
+      if (res.ok) {
+        const data = await res.json();
+        // Update local state and storage
+        const user = { ...data, createdAt: data.createdAt || new Date().toISOString() };
+        this.currentUser = user;
+        this.notifyListeners(user);
+        return user;
+      }
+    } catch (e) {
+      console.error("Failed to refresh user:", e);
     }
-    this.listeners.forEach(callback => callback(user));
+    return this.currentUser;
   }
-}
-
-// Export singleton instance
-export const authService: AuthService = new DatabaseAuthService();
-
-/**
- * FIREBASE INTEGRATION EXAMPLE:
- * 
- * import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, 
- *          signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
- * 
- * class FirebaseAuthService implements AuthService {
- *   private auth = getAuth();
- *   private provider = new GoogleAuthProvider();
- * 
- *   async signInWithEmail(email: string, password: string): Promise<User> {
- *     const result = await signInWithEmailAndPassword(this.auth, email, password);
- *     return this.mapFirebaseUser(result.user);
- *   }
- * 
- *   async signUpWithEmail(email: string, password: string, name: string): Promise<User> {
- *     const result = await createUserWithEmailAndPassword(this.auth, email, password);
- *     await updateProfile(result.user, { displayName: name });
- *     return this.mapFirebaseUser(result.user);
- *   }
- * 
- *   async signInWithGoogle(): Promise<User> {
- *     const result = await signInWithPopup(this.auth, this.provider);
- *     return this.mapFirebaseUser(result.user);
- *   }
- * 
- *   async signOut(): Promise<void> {
- *     await signOut(this.auth);
- *   }
- * 
- *   async getCurrentUser(): Promise<User | null> {
- *     return this.auth.currentUser ? this.mapFirebaseUser(this.auth.currentUser) : null;
- *   }
- * 
- *   onAuthStateChange(callback: (user: User | null) => void): () => void {
- *     return onAuthStateChanged(this.auth, (firebaseUser) => {
- *       callback(firebaseUser ? this.mapFirebaseUser(firebaseUser) : null);
- *     });
- *   }
- * 
- *   private mapFirebaseUser(user: any): User {
- *     return {
- *       id: user.uid,
- *       email: user.email || '',
- *       name: user.displayName || user.email?.split('@')[0] || 'Usuario',
- *       photoURL: user.photoURL || undefined,
- *       createdAt: user.metadata.creationTime || new Date().toISOString(),
- *     };
- *   }
- * }
- */
+};

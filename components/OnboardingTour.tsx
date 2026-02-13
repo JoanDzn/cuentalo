@@ -52,23 +52,15 @@ const STEPS = [
     {
         target: 'profile-btn',
         title: 'Tu Perfil',
-        content: () => 'Configura tu cuenta, cierra sesión o ajusta tus preferencias.',
+        content: () => 'Accede a tu cuenta, cambia entre modo claro/oscuro y gestiona tus preferencias.',
         position: 'bottom',
         icon: <User size={32} />,
         color: 'text-gray-500 bg-gray-100 dark:bg-gray-800'
     },
     {
-        target: 'theme-btn',
-        title: 'Modo Oscuro',
-        content: () => '¿Mucha luz? Cambia entre modo claro y oscuro cuando quieras.',
-        position: 'bottom',
-        icon: <Moon size={32} />,
-        color: 'text-orange-500 bg-orange-50 dark:bg-orange-900/20'
-    },
-    {
         target: 'voice-input-btn',
-        title: 'Habla con tus Finanzas',
-        content: () => 'La magia. Presiona y di: "Gasté 500 en comida". Nosotros hacemos el resto.',
+        title: 'Habla o Escribe',
+        content: () => 'Presiona para hablar o desliza el botón hacia la derecha para escribir tus gastos manualmente.',
         position: 'top',
         icon: <Mic size={32} />,
         color: 'text-red-500 bg-red-50 dark:bg-red-900/20'

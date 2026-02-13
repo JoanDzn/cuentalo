@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema({
     name: { type: String },
     picture: { type: String },
     role: { type: String, default: 'user' },
+    isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },
 });
 

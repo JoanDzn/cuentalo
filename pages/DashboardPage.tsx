@@ -8,7 +8,7 @@ import ProfileDrawer from '../components/ProfileDrawer';
 import SavingsMissions from '../components/SavingsMissions';
 import SubscriptionsModal from '../components/SubscriptionsModal';
 import SavingsModal from '../components/SavingsModal';
-import { Transaction, ExpenseAnalysis, RateData, RecurringTransaction } from '../types';
+import { Transaction, ExpenseAnalysis, RateData, RecurringTransaction, SavingsMission } from '../types';
 import { getAllRates } from '../services/exchangeRateService';
 import { authService, User } from '../services/authService';
 import { dbService } from '../services/dbService';
@@ -30,6 +30,7 @@ const DashboardPage: React.FC = () => {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
+  const [missions, setMissions] = useState<SavingsMission[]>([]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(null);
@@ -67,18 +68,30 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  // Fetch user and setup auth listener
+  // Fetch user and data
   useEffect(() => {
-    const unsubscribe = authService.onAuthStateChange((currentUser) => {
+    const unsubscribe = authService.onAuthStateChange(async (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
         navigate('/auth');
       } else {
-        const userData = dbService.getUserData(currentUser.id);
-        setTransactions(userData.transactions);
-        setRecurringTransactions(userData.recurringTransactions || []);
-        if (userData.settings?.theme) {
-          setIsDarkMode(userData.settings.theme === 'dark');
+        try {
+          // Refresh user profile (role check)
+          if (!currentUser.role) {
+            const freshUser = await authService.refreshUser();
+            if (freshUser) setUser(freshUser);
+          }
+
+          // Load Fresh Data from API
+          const userData = await dbService.getUserData(currentUser.id);
+          setTransactions(userData.transactions);
+          setRecurringTransactions(userData.recurringTransactions || []);
+          setMissions(userData.savingsMissions || []);
+          if (userData.settings && userData.settings.theme) {
+            setIsDarkMode(userData.settings.theme === 'dark');
+          }
+        } catch (e) {
+          console.error("Error loading user data:", e);
         }
       }
     });
@@ -90,15 +103,11 @@ const DashboardPage: React.FC = () => {
     if (recurringTransactions.length > 0 && user) {
       const today = new Date();
       const currentDay = today.getDate();
-      const currentMonthKey = today.toISOString().substring(0, 7); // YYYY-MM
 
       let newTransactions: Transaction[] = [];
 
       recurringTransactions.forEach(item => {
         if (item.day === currentDay) {
-          // Check if already generated for this month?
-          // A simple heuristic: check if any transaction today matches the description and amount
-          // This is not perfect (what if I bought Netflix manually?), but good enough for MVP without complex tracking
           const alreadyExists = transactions.some(t =>
             t.description === item.name &&
             Math.abs(t.amount - item.amount) < 0.01 &&
@@ -120,11 +129,14 @@ const DashboardPage: React.FC = () => {
 
       if (newTransactions.length > 0) {
         setTransactions(prev => [...newTransactions, ...prev]);
-        // Also notify logic or toast?
         console.log("Auto-generated transactions:", newTransactions);
+        // Persist generated transactions
+        newTransactions.forEach(t => {
+          if (user) dbService.addUserTransaction(user.id, t);
+        });
       }
     }
-  }, [recurringTransactions, user]); // Run when recurring items load. Note: 'transactions' dep removed to avoid loops, but we need initial transactions loaded.
+  }, [recurringTransactions, user]); // Run when recurring items load.
 
   // Fetch All Rates
   useEffect(() => {
@@ -140,13 +152,6 @@ const DashboardPage: React.FC = () => {
     };
     fetchRates();
   }, []);
-
-  // Persistence Effect for Transactions
-  useEffect(() => {
-    if (user) {
-      dbService.updateUserTransactions(user.id, transactions);
-    }
-  }, [transactions, user]);
 
   // Theme Handling & Persistence
   useEffect(() => {
@@ -197,7 +202,6 @@ const DashboardPage: React.FC = () => {
       rateType = 'bcv'; // Force rate type to BCV for VES transactions
     }
     // Logic for USD Transactions with specific rate (Arbitrage)
-    // "Me cobraron 10 dólares a tasa euro" -> Convert using Euro rate, then normalize to BCV USD
     else if (analysis.currency === 'USD' && rateType && rateType !== 'bcv') {
       const specialRate = await getRateValue(rateType);
       const vesValue = analysis.amount * specialRate;
@@ -205,7 +209,6 @@ const DashboardPage: React.FC = () => {
 
       finalAmount = vesValue / bcvRate;
       rateValue = specialRate; // Store the special rate used
-
       console.log(`Arbitrage Transaction: ${analysis.amount} USD @ ${rateType} (${specialRate}) = ${vesValue} VES. Normalized to ${finalAmount} USD @ BCV (${bcvRate})`);
     }
 
@@ -221,23 +224,72 @@ const DashboardPage: React.FC = () => {
       rateType: rateType || undefined,
       rateValue: rateValue
     };
+
+    // Optimistic Update
     setTransactions(prev => [newTransaction, ...prev]);
 
     if (user) {
-      dbService.addUserTransaction(user.id, newTransaction);
+      try {
+        const savedTx = await dbService.addUserTransaction(user.id, newTransaction);
+        // Update with real ID from backend
+        setTransactions(prev => prev.map(t => t.id === newTransaction.id ? savedTx : t));
+      } catch (error) {
+        console.error("Failed to save transaction:", error);
+        // Rollback on failure
+        setTransactions(prev => prev.filter(t => t.id !== newTransaction.id));
+      }
     }
   };
 
-  const handleUpdateTransaction = (updated: Transaction) => {
+  const handleUpdateTransaction = async (updated: Transaction) => {
     setTransactions(prev => prev.map(t => t.id === updated.id ? updated : t));
     setIsEditing(false);
     setCurrentTransaction(null);
+
+    if (user) {
+      try {
+        await dbService.updateUserTransaction(user.id, updated.id, updated);
+      } catch (error) {
+        console.error("Failed to update transaction remotely:", error);
+      }
+    }
   };
 
-  const handleDeleteTransaction = (id: string) => {
+  const handleDeleteTransaction = async (id: string) => {
     setTransactions(prev => prev.filter(t => t.id !== id));
     setIsEditing(false);
     setCurrentTransaction(null);
+
+    if (user) {
+      try {
+        await dbService.deleteUserTransaction(user.id, id);
+      } catch (error) {
+        console.error("Failed to delete transaction remotely:", error);
+      }
+    }
+  };
+
+  const handleUpdateMission = async (updatedMission: SavingsMission) => {
+    setMissions(prev => {
+      const exists = prev.find(m => m.id === updatedMission.id);
+      if (exists) {
+        return prev.map(m => m.id === updatedMission.id ? updatedMission : m);
+      } else {
+        return [...prev, updatedMission];
+      }
+    });
+
+    if (user) {
+      try {
+        await dbService.updateMission(user.id, updatedMission);
+      } catch (e) {
+        try {
+          await dbService.addMission(user.id, updatedMission);
+        } catch (e2) {
+          console.error("Failed to sync mission", e2);
+        }
+      }
+    }
   };
 
   const openEditModal = (t: Transaction) => {
@@ -251,9 +303,9 @@ const DashboardPage: React.FC = () => {
       date: new Date().toISOString().split('T')[0],
       rateValue: undefined,
       rateType: undefined,
-      originalCurrency: 'USD', // Default for savings
+      originalCurrency: 'USD',
       originalAmount: t.amount,
-      amount: t.amount, // Assumes USD for now
+      amount: t.amount,
       description: t.description,
       category: t.category,
       type: t.type
@@ -263,16 +315,12 @@ const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full h-screen overflow-hidden font-sans text-gray-900 dark:text-gray-100 selection:bg-indigo-100 dark:selection:bg-indigo-900">
-
-      {/* Background from Landing Page */}
-
-
+    <div className="relative w-full h-screen overflow-hidden font-sans text-gray-900 dark:text-gray-100 selection:bg-indigo-100 dark:selection:bg-indigo-900 transition-colors duration-300">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="relative z-10 w-full h-full flex flex-col"
+        className="relative z-10 w-full h-full flex flex-col transition-colors duration-300"
       >
         <AnimatePresence mode="wait">
           {showMissions ? (
@@ -281,11 +329,15 @@ const DashboardPage: React.FC = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="w-full h-full bg-[#F5F5F5] dark:bg-[#121212]" // Keep background for readability of sub-pages? Or transparent?
+              className="w-full h-full bg-[#F5F5F5] dark:bg-[#121212]"
             >
-              {/* SavingsMissions has its own background? It probably needs opaque background to cover main one */}
               <div className="w-full h-full bg-[#F5F5F5]/90 dark:bg-[#121212]/90 backdrop-blur-md">
-                <SavingsMissions onBack={() => setShowMissions(false)} transactions={transactions} />
+                <SavingsMissions
+                  onBack={() => setShowMissions(false)}
+                  transactions={transactions}
+                  missions={missions}
+                  onUpdateMission={handleUpdateMission}
+                />
               </div>
             </motion.div>
           ) : (
@@ -321,7 +373,6 @@ const DashboardPage: React.FC = () => {
           userName={user?.name?.split(' ')[0] || 'Amigo'}
         />
 
-
         {/* Modals & Drawers */}
         <EditModal
           isOpen={isEditing}
@@ -341,6 +392,8 @@ const DashboardPage: React.FC = () => {
           onFixedIncomeClick={() => { setSubscriptionModalTab('income'); setShowSubscriptions(true); }}
           onRatesClick={() => setShowRates(true)}
           onSavingsClick={() => setShowSavings(true)}
+          isDarkMode={isDarkMode}
+          toggleTheme={toggleTheme}
         />
 
         <SubscriptionsModal

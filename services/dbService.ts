@@ -1,315 +1,150 @@
 /**
- * Database Service
- * Manages user data storage using localStorage
- * Each user has their own isolated data space
+ * API Service (Persistent Database)
+ * Replaces old localStorage with real API calls to backend
  */
 
-import { Transaction, SavingsMission, FinancialHealthTest, RecurringTransaction } from '../types';
-import { User } from './authService';
+import { Transaction, SavingsMission, RecurringTransaction, UserSettings } from '../types';
 
-export interface UserData {
+const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+const API_URL = `${BASE_URL}/api`;
+
+interface UserData {
   transactions: Transaction[];
   savingsMissions: SavingsMission[];
-  recurringTransactions?: RecurringTransaction[];
-  financialHealthTest?: FinancialHealthTest;
-  settings?: {
-    theme?: 'light' | 'dark';
-    preferredCurrency?: 'USD' | 'VES';
+  recurringTransactions: RecurringTransaction[];
+  settings?: UserSettings;
+}
+
+const getHeaders = () => {
+  const token = localStorage.getItem('jwt_token');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
   };
-}
+};
 
-export interface UserAccount {
-  id: string;
-  email: string;
-  password: string; // In production, this should be hashed
-  name: string;
-  createdAt: string;
-  photoURL?: string;
-}
+// Check if token exists
+const hasToken = () => !!localStorage.getItem('jwt_token');
 
-class DatabaseService {
-  private readonly USERS_KEY = 'cuentalo_users';
-  private readonly USER_DATA_PREFIX = 'cuentalo_user_data_';
+export const dbService = {
 
-  /**
-   * Initialize database with demo user
-   */
-  initialize(): void {
-    const users = this.getAllUsers();
+  // --- Transactions ---
 
-    // Create demo user if it doesn't exist
-    let demoUser = users.find(u => u.email === 'admin@gmail.com');
-    if (!demoUser) {
-      const demoAccount: UserAccount = {
-        id: 'demo-admin-001',
-        email: 'admin@gmail.com',
-        password: '123456', // In production, hash this
-        name: 'Admin Demo',
-        createdAt: new Date().toISOString(),
-      };
-      users.push(demoAccount);
-      this.saveAllUsers(users);
+  async getUserData(userId: string): Promise<UserData> {
+    if (!hasToken()) return { transactions: [], savingsMissions: [], recurringTransactions: [] };
 
-      // Initialize empty data for demo user
-      this.initializeUserData(demoAccount.id);
-      demoUser = demoAccount;
-    }
-
-    // Always ensure admin has seed data if empty (for demo purposes)
-    const adminData = this.getUserData(demoUser.id);
-    if (adminData.transactions.length === 0) {
-      const seedTransactions: Transaction[] = [
-        {
-          id: 'seed-1',
-          description: 'Mercado semanal',
-          amount: 45.5,
-          category: 'Comida',
-          date: new Date().toISOString(),
-          type: 'expense',
-        },
-        {
-          id: 'seed-2',
-          description: 'Sueldo quincenal',
-          amount: 350.0,
-          category: 'Salario',
-          date: new Date(Date.now() - 86400000 * 2).toISOString(),
-          type: 'income',
-        },
-        {
-          id: 'seed-3',
-          description: 'Pago de alquiler',
-          amount: 120.0,
-          category: 'Hogar',
-          date: new Date(Date.now() - 86400000 * 5).toISOString(),
-          type: 'expense',
-        },
-      ];
-      this.updateUserTransactions(demoUser.id, seedTransactions);
-    }
-  }
-
-  /**
-   * Get all registered users
-   */
-  getAllUsers(): UserAccount[] {
     try {
-      const stored = localStorage.getItem(this.USERS_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  }
+      // Parallel Fetch
+      const [txRes, missionRes] = await Promise.all([
+        fetch(`${API_URL}/transactions`, { headers: getHeaders() }),
+        fetch(`${API_URL}/missions`, { headers: getHeaders() })
+      ]);
 
-  /**
-   * Save all users
-   */
-  private saveAllUsers(users: UserAccount[]): void {
-    localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
-  }
-
-  /**
-   * Find user by email
-   */
-  findUserByEmail(email: string): UserAccount | null {
-    const users = this.getAllUsers();
-    return users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
-  }
-
-  /**
-   * Find user by ID
-   */
-  findUserById(id: string): UserAccount | null {
-    const users = this.getAllUsers();
-    return users.find(u => u.id === id) || null;
-  }
-
-  /**
-   * Create new user account
-   */
-  createUser(email: string, password: string, name: string, photoURL?: string): UserAccount {
-    const users = this.getAllUsers();
-
-    // Check if user already exists
-    if (this.findUserByEmail(email)) {
-      throw new Error('El correo electrónico ya está registrado');
-    }
-
-    const newUser: UserAccount = {
-      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      email: email.toLowerCase(),
-      password, // In production, hash this
-      name,
-      createdAt: new Date().toISOString(),
-      photoURL,
-    };
-
-    users.push(newUser);
-    this.saveAllUsers(users);
-
-    // Initialize empty data for new user
-    this.initializeUserData(newUser.id);
-
-    return newUser;
-  }
-
-  /**
-   * Verify user credentials
-   */
-  verifyCredentials(email: string, password: string): UserAccount | null {
-    const user = this.findUserByEmail(email);
-    if (!user) {
-      return null;
-    }
-
-    // In production, compare hashed passwords
-    if (user.password !== password) {
-      return null;
-    }
-
-    return user;
-  }
-
-  /**
-   * Update user account details
-   */
-  updateUserAccount(userId: string, updates: Partial<UserAccount>): void {
-    const users = this.getAllUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index !== -1) {
-      users[index] = { ...users[index], ...updates };
-      this.saveAllUsers(users);
-    }
-  }
-
-  /**
-   * Initialize empty user data
-   */
-  private initializeUserData(userId: string): void {
-    const emptyData: UserData = {
-      transactions: [],
-      savingsMissions: [],
-      recurringTransactions: [],
-      settings: {
-        theme: 'dark',
-        preferredCurrency: 'USD',
-      },
-    };
-    this.saveUserData(userId, emptyData);
-  }
-
-  /**
-   * Get user data
-   */
-  getUserData(userId: string): UserData {
-    try {
-      const key = `${this.USER_DATA_PREFIX}${userId}`;
-      const stored = localStorage.getItem(key);
-
-      if (!stored) {
-        // Initialize if doesn't exist
-        this.initializeUserData(userId);
-        return this.getUserData(userId);
+      if (txRes.status === 401 || missionRes.status === 401) {
+        console.warn("Session expired, redirecting to login...");
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('cuentalo_session');
+        window.location.href = '/auth';
+        return { transactions: [], savingsMissions: [], recurringTransactions: [] };
       }
 
-      const data = JSON.parse(stored);
+      if (!txRes.ok || !missionRes.ok) throw new Error('Failed to fetch data');
 
-      // Ensure all required fields exist
+      const transactionsRaw = await txRes.json();
+      const missionsRaw = await missionRes.json();
+
+      // Map _id to id
+      const transactions: Transaction[] = transactionsRaw.map((t: any) => ({ ...t, id: t._id }));
+      const missions: SavingsMission[] = missionsRaw.map((m: any) => ({ ...m, id: m._id }));
+
+      // Recurring could be stored in User Settings or separate endpoint (TODO)
+      const recurring: RecurringTransaction[] = [];
+
       return {
-        transactions: data.transactions || [],
-        savingsMissions: data.savingsMissions || [],
-        recurringTransactions: data.recurringTransactions || [],
-        financialHealthTest: data.financialHealthTest,
-        settings: {
-          theme: data.settings?.theme || 'dark',
-          preferredCurrency: data.settings?.preferredCurrency || 'USD',
-        },
+        transactions,
+        savingsMissions: missions,
+        recurringTransactions: recurring,
+        settings: { theme: 'dark' }
       };
-    } catch {
-      // Return empty data on error
-      this.initializeUserData(userId);
-      return this.getUserData(userId);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      return { transactions: [], savingsMissions: [], recurringTransactions: [] };
     }
-  }
+  },
 
-  /**
-   * Save user data
-   */
-  saveUserData(userId: string, data: UserData): void {
-    const key = `${this.USER_DATA_PREFIX}${userId}`;
-    localStorage.setItem(key, JSON.stringify(data));
-  }
-
-  /**
-   * Update user transactions
-   */
-  updateUserTransactions(userId: string, transactions: Transaction[]): void {
-    const userData = this.getUserData(userId);
-    userData.transactions = transactions;
-    this.saveUserData(userId, userData);
-  }
-
-  /**
-   * Add transaction to user
-   */
-  addUserTransaction(userId: string, transaction: Transaction): void {
-    const userData = this.getUserData(userId);
-    userData.transactions = [transaction, ...userData.transactions];
-    this.saveUserData(userId, userData);
-  }
-
-  /**
-   * Update user transaction
-   */
-  updateUserTransaction(userId: string, transactionId: string, updates: Partial<Transaction>): void {
-    const userData = this.getUserData(userId);
-    userData.transactions = userData.transactions.map(t =>
-      t.id === transactionId ? { ...t, ...updates } : t
-    );
-    this.saveUserData(userId, userData);
-  }
-
-  /**
-   * Delete user transaction
-   */
-  deleteUserTransaction(userId: string, transactionId: string): void {
-    const userData = this.getUserData(userId);
-    userData.transactions = userData.transactions.filter(t => t.id !== transactionId);
-    this.saveUserData(userId, userData);
-  }
-
-  /**
-   * Update user recurring transactions
-   */
-  updateUserRecurringTransactions(userId: string, recurring: RecurringTransaction[]): void {
-    const userData = this.getUserData(userId);
-    userData.recurringTransactions = recurring;
-    this.saveUserData(userId, userData);
-  }
-
-  /**
-   * Update user settings
-   */
-  updateUserSettings(userId: string, settings: Partial<UserData['settings']>): void {
-    const userData = this.getUserData(userId);
-    userData.settings = { ...userData.settings, ...settings };
-    this.saveUserData(userId, userData);
-  }
-
-  /**
-   * Clear all data (for testing)
-   */
-  clearAllData(): void {
-    const users = this.getAllUsers();
-    users.forEach(user => {
-      const key = `${this.USER_DATA_PREFIX}${user.id}`;
-      localStorage.removeItem(key);
+  async addUserTransaction(userId: string, transaction: Transaction): Promise<Transaction> {
+    const res = await fetch(`${API_URL}/transactions`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(transaction)
     });
-    localStorage.removeItem(this.USERS_KEY);
+    if (!res.ok) throw new Error('Failed to add transaction');
+    const data = await res.json();
+    return { ...data, id: data._id };
+  },
+
+  async updateUserTransaction(userId: string, transactionId: string, updates: Partial<Transaction>): Promise<Transaction> {
+    const res = await fetch(`${API_URL}/transactions/${transactionId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) throw new Error('Failed to update transaction');
+    const data = await res.json();
+    return { ...data, id: data._id };
+  },
+
+  async deleteUserTransaction(userId: string, transactionId: string): Promise<void> {
+    const res = await fetch(`${API_URL}/transactions/${transactionId}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    if (!res.ok) throw new Error('Failed to delete transaction');
+  },
+
+  // --- Bulk Update (Deprecated but compatible) ---
+  updateUserTransactions(userId: string, transactions: Transaction[]): void {
+    console.warn("Bulk update is deprecated. Use individual API calls.");
+  },
+
+  // --- Missions ---
+
+  async addMission(userId: string, mission: SavingsMission): Promise<SavingsMission> {
+    const res = await fetch(`${API_URL}/missions`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(mission)
+    });
+    if (!res.ok) throw new Error('Failed to add mission');
+    const data = await res.json();
+    return { ...data, id: data._id };
+  },
+
+  async updateMission(userId: string, mission: SavingsMission): Promise<SavingsMission> {
+    // Check if we have a real ID (from Mongo) or a client-side ID
+    // If client-side ID (e.g. 'emergency-fund'), we might need to handle it.
+    // However, usually we should use _id for updates. 
+    // If the mission comes from getUserData, it has _id mapped to id.
+
+    // For specific hardcoded missions (like 'emergency-fund'), they might not have _id yet if not saved.
+    // But addMission creates them.
+
+    const res = await fetch(`${API_URL}/missions/${mission.id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(mission)
+    });
+    // If 404/500, caller might try addMission
+    if (!res.ok) throw new Error('Failed to update mission');
+    const data = await res.json();
+    return { ...data, id: data._id };
+  },
+
+  async updateUserRecurringTransactions(userId: string, recurring: RecurringTransaction[]): Promise<void> {
+    // TODO: Implement endpoint
+  },
+
+  async updateUserSettings(userId: string, settings: any): Promise<void> {
+    // TODO: Implement endpoint
   }
-}
-
-// Export singleton instance
-export const dbService = new DatabaseService();
-
-// Initialize on import
-dbService.initialize();
+};

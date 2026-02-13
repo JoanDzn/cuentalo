@@ -5,6 +5,8 @@ import { SavingsMission, FinancialHealthTest, Transaction } from '../types';
 interface SavingsMissionsProps {
   onBack: () => void;
   transactions: Transaction[];
+  missions: SavingsMission[];
+  onUpdateMission: (mission: SavingsMission) => void;
 }
 
 const HEALTH_QUESTIONS = [
@@ -35,103 +37,21 @@ const HEALTH_QUESTIONS = [
   },
 ];
 
-const INITIAL_MISSIONS: SavingsMission[] = [
-  {
-    id: 'no-small-spending',
-    title: 'Reto de los 30 días sin gastos hormiga',
-    description: 'Evita gastos pequeños e innecesarios durante 30 días consecutivos',
-    tip: '💡 Tip: Antes de comprar algo pequeño, espera 24 horas. Muchas veces te darás cuenta de que no lo necesitas.',
-    currentProgress: 0,
-    targetProgress: 100,
-    status: 'locked',
-    type: 'days',
-    icon: 'calendar',
-  },
-  {
-    id: 'emergency-fund',
-    title: 'Misión: Primer Fondo de Emergencia',
-    description: 'Ahorra $500 para tu fondo de emergencia inicial',
-    tip: '💡 Tip: Automatiza tus ahorros. Configura una transferencia automática el día que recibes tu salario.',
-    targetAmount: 500,
-    currentProgress: 0,
-    targetProgress: 100,
-    status: 'locked',
-    type: 'amount',
-    icon: 'piggybank',
-  },
-  {
-    id: 'track-expenses',
-    title: 'Hábito: Registra todos tus gastos',
-    description: 'Registra al menos 10 transacciones usando comandos de voz',
-    tip: '💡 Tip: Usa comandos de voz como "Gasté 20 dólares en almuerzo" para registrar rápidamente tus gastos.',
-    currentProgress: 0,
-    targetProgress: 100,
-    status: 'locked',
-    type: 'habit',
-    icon: 'target',
-  },
-];
-
-const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack, transactions }) => {
+const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack, transactions, missions, onUpdateMission }) => {
   const [healthTest, setHealthTest] = useState<FinancialHealthTest>(() => {
-    const saved = localStorage.getItem('cuentalo_health_test');
+    const saved = localStorage.getItem('cuentalo_financial_health_v1');
     return saved ? JSON.parse(saved) : { completed: false, answers: [] };
   });
   const [showTest, setShowTest] = useState(!healthTest.completed);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [missions, setMissions] = useState<SavingsMission[]>(() => {
-    const saved = localStorage.getItem('cuentalo_missions');
-    return saved ? JSON.parse(saved) : INITIAL_MISSIONS;
-  });
 
-  // Effect to update savings mission progress
+  // Fallback: If for some reason state indicates incomplete but showTest is false
   useEffect(() => {
-    // 1. Calculate Net Savings for "Emergency Fund"
-    const savingsTransactions = transactions.filter(t =>
-      t.category === 'Ahorro' || t.category.toLowerCase().includes('ahorro')
-    );
-    const netSavings = savingsTransactions.reduce((acc, curr) => {
-      // Expense = Money INTO savings (leaves wallet)
-      // Income = Money OUT of savings (enters wallet)
-      return acc + (curr.type === 'expense' ? curr.amount : -curr.amount);
-    }, 0);
-
-    // 2. Calculate Total Transactions for "Track Expenses"
-    const totalTransactions = transactions.length;
-
-    setMissions(prevMissions => prevMissions.map(mission => {
-      // Mission: Emergency Fund
-      if (mission.id === 'emergency-fund' && mission.status !== 'locked') {
-        const isCompleted = netSavings >= (mission.targetAmount || 0);
-        if (mission.currentProgress !== netSavings || (isCompleted && mission.status !== 'completed')) {
-          return {
-            ...mission,
-            currentProgress: Math.max(0, netSavings),
-            status: isCompleted ? 'completed' : 'active'
-          };
-        }
-      }
-
-      // Mission: Track Expenses (Voice/Manual)
-      if (mission.id === 'track-expenses' && mission.status !== 'locked') {
-        const isCompleted = totalTransactions >= (mission.targetProgress || 10);
-        if (mission.currentProgress !== totalTransactions || (isCompleted && mission.status !== 'completed')) {
-          return {
-            ...mission,
-            currentProgress: totalTransactions,
-            status: isCompleted ? 'completed' : 'active'
-          };
-        }
-      }
-
-      return mission;
-    }));
-  }, [transactions]);
-
-  useEffect(() => {
-    localStorage.setItem('cuentalo_missions', JSON.stringify(missions));
-  }, [missions]);
+    if (!healthTest.completed) {
+      setShowTest(true);
+    }
+  }, [healthTest.completed]);
 
   const handleAnswer = (questionId: string, answer: string) => {
     setAnswers({ ...answers, [questionId]: answer });
@@ -155,11 +75,15 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack, transactions 
       completedAt: new Date().toISOString(),
     };
     setHealthTest(testResult);
-    localStorage.setItem('cuentalo_health_test', JSON.stringify(testResult));
+    localStorage.setItem('cuentalo_financial_health_v1', JSON.stringify(testResult));
     setShowTest(false);
 
-    // Unlock missions
-    setMissions(prev => prev.map(m => ({ ...m, status: 'active' as const })));
+    // ...
+    missions.forEach(m => {
+      if (m.status === 'locked') {
+        onUpdateMission({ ...m, status: 'active' });
+      }
+    });
   };
 
   const getIcon = (iconName: string) => {
@@ -185,9 +109,9 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack, transactions 
     const canProceed = answers[question.id] !== undefined;
 
     return (
-      <div className="w-full max-w-2xl mx-auto h-full flex flex-col p-6">
+      <div className="relative w-full max-w-2xl mx-auto h-full flex flex-col p-6">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex items-center gap-4 mb-4">
           <button
             onClick={onBack}
             className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
@@ -195,34 +119,34 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack, transactions 
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">
               Test de salud financiera
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Pregunta {currentQuestion + 1} de {HEALTH_QUESTIONS.length}
             </p>
           </div>
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress Bar (Purple) */}
         <div className="mb-8">
-          <div className="h-2 bg-gray-200 dark:bg-[#2C2C2C] rounded-full overflow-hidden">
+          <div className="h-1.5 bg-gray-200 dark:bg-[#333] rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 transition-all duration-300 rounded-full"
+              className="h-full bg-purple-600 transition-all duration-300 rounded-full"
               style={{ width: `${((currentQuestion + 1) / HEALTH_QUESTIONS.length) * 100}%` }}
             />
           </div>
         </div>
 
         {/* Question Card */}
-        <div className="flex-1 flex flex-col overflow-y-auto pb-32 scrollable-list">
-          <div className="bg-white dark:bg-[#1E1E1E] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#333] mb-6 flex-shrink-0">
+        <div className="flex-1 flex flex-col overflow-y-auto pb-6 scrollable-list">
+          <div className="bg-white dark:bg-[#1E1E1E] rounded-[24px] p-6 shadow-sm border border-gray-100 dark:border-[#333] mb-6 flex-shrink-0">
             <div className="flex items-start gap-4 mb-6">
-              <div className="w-12 h-12 rounded-[20px] bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
                 <TrendingUp size={24} />
               </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              <div className="flex-1 mt-1">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
                   {question.question}
                 </h2>
               </div>
@@ -233,22 +157,21 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack, transactions 
                 <button
                   key={index}
                   onClick={() => handleAnswer(question.id, option)}
-                  className={`w-full text-left p-4 rounded-[24px] border-2 transition-all duration-300 ${answers[question.id] === option
-                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-900 dark:text-indigo-100'
-                    : 'border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-[#2C2C2C] text-gray-900 dark:text-white hover:border-indigo-300 dark:hover:border-indigo-700'
+                  className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 ${answers[question.id] === option
+                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-900 dark:text-purple-100 font-semibold shadow-sm'
+                    : 'border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-[#2C2C2C] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#333]'
                     }`}
                 >
-                  <span className="font-medium">{option}</span>
+                  <span className="text-sm">{option}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Next Button */}
           <button
             onClick={handleNextQuestion}
             disabled={!canProceed}
-            className="w-full px-6 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-[24px] font-bold shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] mt-2 mb-6"
           >
             {isLastQuestion ? 'Completar Test' : 'Siguiente Pregunta'}
           </button>
@@ -278,7 +201,7 @@ const SavingsMissions: React.FC<SavingsMissionsProps> = ({ onBack, transactions 
       </div>
 
       {/* Missions List */}
-      <div className="flex-1 overflow-y-auto space-y-4 scrollable-list">
+      <div className="flex-1 overflow-y-auto space-y-4 scrollable-list pb-6">
         {missions.map((mission) => {
           const progress = calculateProgress(mission);
           const isLocked = mission.status === 'locked';

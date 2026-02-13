@@ -5,12 +5,12 @@ export const AnimatedBackground: React.FC = () => {
     return (
         <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
             {/* Base Background Color - specific to Landing Page aesthetic, but we might want to respect theme in Dashboard */}
-            <div className="absolute inset-0 bg-[#0a0a0a] -z-10" />
+            <div className="absolute inset-0 bg-white dark:bg-[#0a0a0a] transition-colors duration-300 -z-10" />
 
             {/* Glowing orbs */}
-            <div className="absolute top-20 left-10 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-3xl" />
+            <div className="absolute top-20 left-10 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl animate-pulse transition-all duration-300" />
+            <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse transition-all duration-300" style={{ animationDelay: '1s' }} />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-3xl transition-all duration-300" />
 
             {/* Network lines */}
             <svg className="absolute inset-0 w-full h-full opacity-20" style={{ zIndex: 0 }}>

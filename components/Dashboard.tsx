@@ -4,6 +4,7 @@ import { Transaction, TransactionType, RateData } from '../types';
 import { ArrowLeftRight, ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard, List } from 'lucide-react';
 import TransactionListModal from './TransactionListModal';
 
+
 interface DashboardProps {
     transactions: Transaction[];
     onEditTransaction: (t: Transaction) => void;
@@ -127,6 +128,15 @@ const getRateLabel = (rateType: string | null | undefined): string => {
     return labels[rateType] || 'Dolar';
 };
 
+// Helper to format date consistent with user timezone expectation (stripping time)
+const formatDate = (dateStep: string) => {
+    if (!dateStep) return '';
+    // Handle both ISO strings (T separator) and simple dates
+    const cleanDate = dateStep.split('T')[0];
+    const [year, month, day] = cleanDate.split('-');
+    return `${day}/${month}/${year}`;
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onSubscriptionsClick, onFixedIncomeClick, onMissionsClick, onSavingsClick }) => {
     const [viewMode, setViewMode] = useState<'recent' | 'history'>('recent');
     const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
@@ -212,14 +222,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
 
     return (
         <>
-            <div className="w-full max-w-2xl mx-auto h-full flex flex-col p-6 transition-colors duration-500 font-sans">
+            <div className="w-full max-w-2xl mx-auto h-full flex flex-col p-6 font-sans">
 
                 {/* Header - Centered Logo */}
                 <div className="relative flex flex-col items-center justify-center mb-6 pt-4 text-center">
                     <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white lowercase">cuentalo</h1>
 
                     {/* Absolute positioned buttons to keep logo perfectly centered */}
-                    <div className="absolute top-4 left-0 flex items-center gap-2">
+                    <div className="absolute top-4 right-0 flex items-center gap-2">
                         <button
                             id="profile-btn"
                             onClick={onProfileClick}
@@ -228,29 +238,20 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                             <User size={20} />
                         </button>
                     </div>
-                    <div className="absolute top-4 right-0">
-                        <button
-                            id="theme-btn"
-                            onClick={toggleTheme}
-                            className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                        >
-                            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                        </button>
-                    </div>
                 </div>
 
                 {/* Tabs */}
                 <div className="flex bg-gray-200 dark:bg-[#1E1E1E] p-1 rounded-2xl mb-2 self-center w-full max-w-xs">
                     <button
                         onClick={() => setViewMode('recent')}
-                        className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-all duration-500 ${viewMode === 'recent' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                        className={`flex-1 py-2 text-sm font-semibold rounded-xl ${viewMode === 'recent' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                     >
                         Resumen
                     </button>
                     <button
                         id="history-tab"
                         onClick={() => setViewMode('history')}
-                        className={`flex-1 py-2 text-sm font-semibold rounded-xl transition-all duration-500 ${viewMode === 'history' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                        className={`flex-1 py-2 text-sm font-semibold rounded-xl ${viewMode === 'history' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                     >
                         Historial
                     </button>
@@ -345,7 +346,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                             </div>
 
                             {/* Transactions List (Inline - Flow) */}
-                            <div className="pt-2 pb-8">
+                            <div className="pt-2 pb-8 px-2">
                                 {transactions.length === 0 ? (
                                     <div className="text-center py-10 opacity-50">
                                         <div className="mx-auto w-16 h-16 bg-gray-200 dark:bg-[#1E1E1E] rounded-full flex items-center justify-center text-gray-400 mb-4">
@@ -359,7 +360,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                             <div
                                                 key={t.id}
                                                 onClick={() => onEditTransaction(t)}
-                                                className="group bg-white dark:bg-[#1a1a1a] p-3 rounded-2xl shadow-sm border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/50 cursor-pointer flex items-center justify-between transition-transform duration-300 hover:translate-x-1"
+                                                className="group bg-white dark:bg-[#1a1a1a] p-3 rounded-2xl shadow-sm border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/50 cursor-pointer flex items-center justify-between transition-all duration-300 hover:scale-[1.02] hover:shadow-lg relative hover:z-10"
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${t.category === 'Ahorro'
@@ -372,7 +373,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                                     </div>
                                                     <div>
                                                         <div className="text-sm font-bold text-gray-900 dark:text-white capitalize">{t.description}</div>
-                                                        <div className="text-[10px] text-gray-400 capitalize">{t.category} • {t.date}</div>
+                                                        <div className="text-[10px] text-gray-400 capitalize">{t.category} • {formatDate(t.date)}</div>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
@@ -401,7 +402,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                     <div key="history-view" className="flex-1 relative min-h-0">
                         <div className="h-full overflow-y-auto pr-2 pb-36 scrollable-list">
                             <div className="sticky top-0 z-10 mb-6">
-                                <div className="bg-[#F5F5F5] dark:bg-[#121212] pt-2 pb-2 transition-colors duration-500 relative z-20">
+                                <div className="bg-[#F5F5F5] dark:bg-[#121212] pt-2 pb-2 relative z-20">
                                     <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Balance Mensual</h2>
                                 </div>
                                 <div className="h-6 w-full pointer-events-none bg-[#F5F5F5] dark:bg-[#121212]" style={{ maskImage: 'linear-gradient(to bottom, black, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, black, transparent)' }} />
@@ -486,7 +487,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                                                             </div>
                                                                             <div className="text-sm">
                                                                                 <div className="font-semibold text-gray-900 dark:text-white capitalize">{t.description}</div>
-                                                                                <div className="text-[10px] text-gray-400">{t.date}</div>
+                                                                                <div className="text-[10px] text-gray-400">{formatDate(t.date)}</div>
                                                                             </div>
                                                                         </div>
                                                                         <div className="text-right">

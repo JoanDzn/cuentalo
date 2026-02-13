@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Mail, Calendar, LogOut, UserCircle, Target, CreditCard, ChevronRight, TrendingUp, Edit2, Save, Globe, PiggyBank } from 'lucide-react';
+import { X, User, Mail, Calendar, LogOut, UserCircle, Target, CreditCard, ChevronRight, TrendingUp, Edit2, Save, Globe, PiggyBank, Shield, Moon, Sun } from 'lucide-react';
 import { User as UserType, authService } from '../services/authService';
 
 interface ProfileDrawerProps {
@@ -13,9 +13,11 @@ interface ProfileDrawerProps {
   onFixedIncomeClick: () => void;
   onRatesClick: () => void;
   onSavingsClick: () => void;
+  isDarkMode: boolean;
+  toggleTheme: () => void;
 }
 
-const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, onLogout, onMissionsClick, onSubscriptionsClick, onFixedIncomeClick, onRatesClick, onSavingsClick }) => {
+const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, onLogout, onMissionsClick, onSubscriptionsClick, onFixedIncomeClick, onRatesClick, onSavingsClick, isDarkMode, toggleTheme }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPhoto, setEditPhoto] = useState('');
@@ -79,12 +81,30 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-[#333]">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Perfil</h2>
-                <button
-                  onClick={onClose}
-                  className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <X size={20} />
-                </button>
+                <div className="flex items-center gap-3">
+                  {/* Theme Switch */}
+                  <div
+                    onClick={toggleTheme}
+                    className={`w-14 h-8 px-1 rounded-full cursor-pointer flex items-center transition-colors duration-300 ${isDarkMode ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                  >
+                    <motion.div
+                      layout
+                      className="w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center text-xs"
+                      initial={false}
+                      animate={{ x: isDarkMode ? 24 : 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    >
+                      {isDarkMode ? <Moon size={12} className="text-indigo-600" /> : <Sun size={12} className="text-yellow-500" />}
+                    </motion.div>
+                  </div>
+
+                  <button
+                    onClick={onClose}
+                    className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
 
               {/* Content */}

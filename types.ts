@@ -63,6 +63,7 @@ export interface RecurringTransaction {
 
 export interface SavingsMission {
   id: string;
+  code?: string;
   title: string;
   description: string;
   tip: string;
@@ -72,4 +73,15 @@ export interface SavingsMission {
   status: 'locked' | 'active' | 'completed';
   type: 'days' | 'amount' | 'habit';
   icon: string;
+}
+
+export interface UserSettings {
+  theme?: 'light' | 'dark';
+}
+
+export interface UserData {
+  transactions: Transaction[];
+  savingsMissions: SavingsMission[];
+  recurringTransactions: RecurringTransaction[] | undefined;
+  settings?: UserSettings;
 }

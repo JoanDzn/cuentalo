@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, PiggyBank, Calendar, Coins, TrendingUp, ArrowDown, Minus } from 'lucide-react';
+import { X, PiggyBank, Calendar, Coins, TrendingUp, ArrowDown, ArrowUp, Minus, Plus } from 'lucide-react';
 import { Transaction } from '../types';
 
 interface SavingsModalProps {
@@ -10,8 +10,15 @@ interface SavingsModalProps {
     onAddTransaction: (transaction: Omit<Transaction, 'id' | 'date'>) => void;
 }
 
+const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const cleanDate = dateString.split('T')[0];
+    const [year, month, day] = cleanDate.split('-');
+    return `${day}/${month}/${year}`;
+};
+
 const SavingsModal: React.FC<SavingsModalProps> = ({ isOpen, onClose, transactions, onAddTransaction }) => {
-    const [isWithdrawing, setIsWithdrawing] = useState(false);
+    const [transactionMode, setTransactionMode] = useState<'deposit' | 'withdraw' | null>(null);
     const [amount, setAmount] = useState('');
 
     // Filter only savings (case insensitive check just in case)
@@ -24,17 +31,19 @@ const SavingsModal: React.FC<SavingsModalProps> = ({ isOpen, onClose, transactio
         return acc + (curr.type === 'expense' ? curr.amount : -curr.amount);
     }, 0);
 
-    const handleWithdraw = () => {
+    const handleTransaction = () => {
         if (!amount || parseFloat(amount) <= 0) return;
+
+        const isDeposit = transactionMode === 'deposit';
 
         onAddTransaction({
             amount: parseFloat(amount),
-            description: 'Retiro de ahorros',
+            description: isDeposit ? 'Ahorro manual' : 'Retiro de ahorros',
             category: 'Ahorro',
-            type: 'income', // Income type implies money coming back to wallet
+            type: isDeposit ? 'expense' : 'income',
         });
 
-        setIsWithdrawing(false);
+        setTransactionMode(null);
         setAmount('');
     };
 
@@ -78,15 +87,24 @@ const SavingsModal: React.FC<SavingsModalProps> = ({ isOpen, onClose, transactio
                                 {/* Total Savings Card */}
                                 <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[24px] p-6 text-white shadow-lg mb-8 relative overflow-hidden">
                                     <div className="relative z-10">
-                                        <div className="flex justify-between items-start mb-2">
+                                        <div className="flex justify-between items-center mb-2">
                                             <p className="text-indigo-100 font-medium text-sm uppercase tracking-wider">Total Ahorrado</p>
-                                            <button
-                                                onClick={() => setIsWithdrawing(true)}
-                                                className="bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold px-3 py-1.5 rounded-full backdrop-blur-md transition-all flex items-center gap-1.5 border border-white/10"
-                                            >
-                                                <Minus size={12} />
-                                                Retirar
-                                            </button>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => setTransactionMode('withdraw')}
+                                                    className="bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold px-3 py-1.5 rounded-full backdrop-blur-md transition-all flex items-center gap-1.5 border border-white/10"
+                                                >
+                                                    <Minus size={12} />
+                                                    Retirar
+                                                </button>
+                                                <button
+                                                    onClick={() => setTransactionMode('deposit')}
+                                                    className="bg-white text-indigo-600 hover:bg-indigo-50 text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg transition-all flex items-center gap-1.5 border border-transparent"
+                                                >
+                                                    <Plus size={12} />
+                                                    Agregar
+                                                </button>
+                                            </div>
                                         </div>
                                         <h3 className="text-4xl font-extrabold tracking-tight">
                                             ${totalSavings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -99,9 +117,9 @@ const SavingsModal: React.FC<SavingsModalProps> = ({ isOpen, onClose, transactio
                                     <Coins className="absolute -bottom-4 -right-4 text-white opacity-20 w-32 h-32 rotate-12" />
                                 </div>
 
-                                {/* Withdraw Section (Only visible when active) */}
+                                {/* Transaction Form Section (Deposit or Withdraw) */}
                                 <AnimatePresence>
-                                    {isWithdrawing && (
+                                    {transactionMode && (
                                         <motion.div
                                             initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                                             animate={{ opacity: 1, height: 'auto', marginBottom: 32 }}
@@ -111,11 +129,11 @@ const SavingsModal: React.FC<SavingsModalProps> = ({ isOpen, onClose, transactio
                                             <div className="bg-white dark:bg-[#252525] p-5 rounded-3xl border border-gray-100 dark:border-[#333] shadow-lg relative overflow-hidden">
                                                 <div className="flex justify-between items-center mb-4">
                                                     <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                                                        Retirar Fondos
+                                                        <span className={`w-2 h-2 rounded-full ${transactionMode === 'deposit' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                                                        {transactionMode === 'deposit' ? 'Agregar Ahorros' : 'Retirar Fondos'}
                                                     </p>
                                                     <button
-                                                        onClick={() => { setIsWithdrawing(false); setAmount(''); }}
+                                                        onClick={() => { setTransactionMode(null); setAmount(''); }}
                                                         className="w-8 h-8 rounded-full bg-gray-100 dark:bg-[#333] text-gray-500 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-[#444] transition-colors"
                                                     >
                                                         <X size={14} />
@@ -129,18 +147,21 @@ const SavingsModal: React.FC<SavingsModalProps> = ({ isOpen, onClose, transactio
                                                         value={amount}
                                                         onChange={(e) => setAmount(e.target.value)}
                                                         placeholder="0.00"
-                                                        className="w-full bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#444] rounded-2xl pl-8 pr-4 py-4 text-2xl font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all placeholder:text-gray-300"
+                                                        className="w-full bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#444] rounded-2xl pl-8 pr-4 py-4 text-2xl font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-gray-300"
                                                         autoFocus
                                                     />
                                                 </div>
 
                                                 <button
-                                                    onClick={handleWithdraw}
+                                                    onClick={handleTransaction}
                                                     disabled={!amount}
-                                                    className="w-full py-4 bg-red-500 hover:bg-red-600 active:scale-95 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-red-500/20 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                    className={`w-full py-4 text-white rounded-2xl font-bold text-sm transition-all shadow-lg disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center gap-2 ${transactionMode === 'deposit'
+                                                        ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'
+                                                        : 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
+                                                        }`}
                                                 >
-                                                    Confirmar Retiro
-                                                    <ArrowDown size={18} />
+                                                    {transactionMode === 'deposit' ? 'Confirmar Depósito' : 'Confirmar Retiro'}
+                                                    {transactionMode === 'deposit' ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
                                                 </button>
                                             </div>
                                         </motion.div>
@@ -175,7 +196,7 @@ const SavingsModal: React.FC<SavingsModalProps> = ({ isOpen, onClose, transactio
                                                             <div className="font-bold text-gray-900 dark:text-white text-sm capitalize">{t.description || 'Ahorro'}</div>
                                                             <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                                                                 <Calendar size={10} />
-                                                                {t.date}
+                                                                {formatDate(t.date)}
                                                             </div>
                                                         </div>
                                                     </div>
