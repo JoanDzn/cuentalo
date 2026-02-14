@@ -64,7 +64,7 @@ export const dbService = {
         transactions,
         savingsMissions: missions,
         recurringTransactions: recurring,
-        settings: { theme: 'dark' }
+        // settings: { theme: 'dark' } // REMOVED: Was overriding local storage
       };
     } catch (error) {
       console.error("Error fetching user data:", error);

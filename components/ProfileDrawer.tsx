@@ -65,7 +65,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[55]"
             onClick={onClose}
           />
 
@@ -75,7 +75,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className={`fixed top-0 h-full w-full max-w-md bg-white dark:bg-[#1E1E1E] shadow-2xl z-50 right-0`}
+            className={`fixed top-0 h-full w-full max-w-md bg-white dark:bg-[#1E1E1E] shadow-2xl z-[60] right-0`}
           >
             <div className="flex flex-col h-full">
               {/* Header */}

@@ -112,12 +112,12 @@ const AuthScreen: React.FC = () => {
         </div>
 
         {/* Auth Card */}
-        <div className="bg-white dark:bg-[#1E1E1E] rounded-[32px] p-8 shadow-lg border border-gray-100 dark:border-[#333]">
+        <div className="bg-white/10 dark:bg-black/20 backdrop-blur-xl rounded-[32px] p-8 shadow-2xl border border-white/10">
           {/* Custom Google Sign In Button */}
           <div className="w-full flex justify-center mb-6">
             <button
               onClick={() => login()}
-              className="w-full max-w-[320px] flex items-center justify-center bg-[#131314] hover:bg-[#1b1b1b] text-white border border-[#333] rounded-full px-6 py-3 font-medium transition-all duration-200 group relative overflow-hidden"
+              className="w-full max-w-[320px] flex items-center justify-center bg-white/10 dark:bg-black/20 backdrop-blur-sm hover:bg-white/20 dark:hover:bg-black/40 text-white border border-white/10 rounded-full px-6 py-3 font-medium transition-all duration-200 group relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -142,15 +142,12 @@ const AuthScreen: React.FC = () => {
             </button>
           </div>
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200 dark:border-[#444]"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white dark:bg-[#1E1E1E] text-gray-500 dark:text-gray-400">
-                o continúa con email
-              </span>
-            </div>
+          <div className="flex items-center gap-4 my-6">
+            <div className="h-px bg-white/10 flex-1"></div>
+            <span className="text-sm text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+              o continúa con email
+            </span>
+            <div className="h-px bg-white/10 flex-1"></div>
           </div>
 
           {/* Error Message */}
@@ -171,13 +168,13 @@ const AuthScreen: React.FC = () => {
                 <div className="relative">
                   <User
                     size={20}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 z-10 pointer-events-none"
                   />
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-[24px] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    className="w-full pl-12 pr-4 py-3 bg-white/10 dark:bg-black/20 backdrop-blur-sm border border-white/10 rounded-[24px] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all"
                     placeholder="Juan Pérez"
                     required={!isLogin}
                   />
@@ -192,13 +189,13 @@ const AuthScreen: React.FC = () => {
               <div className="relative">
                 <Mail
                   size={20}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 z-10 pointer-events-none"
                 />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-[24px] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  className="w-full pl-12 pr-4 py-3 bg-white/10 dark:bg-black/20 backdrop-blur-sm border border-white/10 rounded-[24px] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all"
                   placeholder="tu@email.com"
                   required
                 />
@@ -212,13 +209,13 @@ const AuthScreen: React.FC = () => {
               <div className="relative">
                 <Lock
                   size={20}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 z-10 pointer-events-none"
                 />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-12 py-3 bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-[24px] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  className="w-full pl-12 pr-12 py-3 bg-white/10 dark:bg-black/20 backdrop-blur-sm border border-white/10 rounded-[24px] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all"
                   placeholder="••••••••"
                   required
                   minLength={6}
@@ -226,7 +223,7 @@ const AuthScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors focus:outline-none z-10"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>

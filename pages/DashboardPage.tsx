@@ -138,7 +138,99 @@ const DashboardPage: React.FC = () => {
     }
   }, [recurringTransactions, user]); // Run when recurring items load.
 
-  // Fetch All Rates
+  // --- Mission Logic Engine ---
+  useEffect(() => {
+    if (!user || transactions.length === 0 && missions.length === 0) return;
+
+    // 1. Calculate Real Metrics
+    const txCount = transactions.length;
+
+    // Calculate Total Savings (Deposits - Withdrawals)
+    const savingsTx = transactions.filter(t => t.category === 'Ahorro' || t.category.toLowerCase().includes('ahorro'));
+    const totalSaved = savingsTx.reduce((acc, curr) => {
+      return acc + (curr.type === 'expense' ? curr.amount : -curr.amount);
+    }, 0);
+
+    // Calculate Consistency (Number of separate savings deposits)
+    const savingsCount = savingsTx.filter(t => t.type === 'expense').length;
+
+    // 2. Define Target State (The 3 Missions)
+    const targetMissions: SavingsMission[] = [
+      {
+        id: 'habit_10_tx', // Static ID for client-side matching. Backend will likely assign _id but we check title/id.
+        title: 'Hábito de Registro',
+        description: 'Registra 10 transacciones nuevas',
+        icon: 'calendar',
+        targetProgress: 10,
+        currentProgress: txCount,
+        status: txCount >= 10 ? 'completed' : 'active',
+        tip: 'Registrar cada gasto te hace 20% más consciente de tus finanzas.',
+        type: 'habit'
+      },
+      {
+        id: 'emergency_fund_1000',
+        title: 'Fondo de Emergencia',
+        description: 'Ahorra $1,000 para imprevistos',
+        icon: 'piggybank',
+        targetProgress: 1000,
+        currentProgress: Math.max(0, totalSaved),
+        status: totalSaved >= 1000 ? 'completed' : 'active',
+        tip: 'Un fondo de emergencia evita que te endeudes ante imprevistos.',
+        type: 'amount'
+      },
+      {
+        id: 'consistency_5',
+        title: 'Constancia de Ahorro',
+        description: 'Realiza 5 aportes a tus ahorros',
+        icon: 'target',
+        targetProgress: 5,
+        currentProgress: savingsCount,
+        status: savingsCount >= 5 ? 'completed' : 'active',
+        tip: 'La constancia vence a la intensidad. Ahorra poco pero seguido.',
+        type: 'days'
+      }
+    ];
+
+    // 3. Diff and Update
+    let hasChanges = false;
+    const updatedMissions = [...missions];
+
+    targetMissions.forEach(target => {
+      const existingIndex = updatedMissions.findIndex(m => m.title === target.title); // Match by title to avoid ID issues if backend changes IDs
+
+      if (existingIndex !== -1) {
+        // Update existing
+        const existing = updatedMissions[existingIndex];
+        if (
+          existing.currentProgress !== target.currentProgress ||
+          existing.status !== target.status ||
+          !existing.tip // Fix missing tip
+        ) {
+          updatedMissions[existingIndex] = {
+            ...existing,
+            currentProgress: target.currentProgress,
+            status: existing.status === 'locked' ? 'locked' : target.status, // Preserve locked status if logic dictates, but generally we want auto-update
+            tip: target.tip
+          };
+          hasChanges = true;
+          // Sync to DB
+          if (user) dbService.updateMission(user.id, updatedMissions[existingIndex]).catch(console.error);
+        }
+      } else {
+        // Add new
+        updatedMissions.push(target);
+        hasChanges = true;
+        // Sync to DB
+        if (user) dbService.addMission(user.id, target).catch(console.error);
+      }
+    });
+
+    if (hasChanges) {
+      setMissions(updatedMissions);
+    }
+
+  }, [transactions, user, missions.length]); // Dependency on missions.length to trigger initial hydration, but careful with loops.
+
   useEffect(() => {
     const fetchRates = async () => {
       try {
@@ -160,6 +252,8 @@ const DashboardPage: React.FC = () => {
         theme: isDarkMode ? 'dark' : 'light',
       });
     }
+
+    localStorage.setItem('cuentalo_theme', isDarkMode ? 'dark' : 'light');
 
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -365,7 +459,19 @@ const DashboardPage: React.FC = () => {
         </AnimatePresence>
 
         {/* Voice Interaction Layer */}
-        <VoiceInput onExpenseAdded={handleNewTransaction} onMissionsClick={() => setShowMissions(true)} />
+        <AnimatePresence>
+          {!showMissions && (
+            <motion.div
+              initial={{ opacity: 0, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, filter: 'blur(10px)' }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-0 z-50 pointer-events-none"
+            >
+              <VoiceInput onExpenseAdded={handleNewTransaction} onMissionsClick={() => setShowMissions(true)} />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <OnboardingTour
           isActive={showTour}
