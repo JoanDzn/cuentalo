@@ -289,7 +289,7 @@ const LandingPage: React.FC = () => {
         </div>
         {/* Scroll Indicator - Always Visible */}
         <div
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer z-30 opacity-80 hover:opacity-100 transition-opacity"
+          className="absolute bottom-[54px] left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer z-30 opacity-80 hover:opacity-100 transition-opacity"
           onClick={() => {
             const processSection = document.getElementById('process');
             if (processSection) processSection.scrollIntoView({ behavior: 'smooth' });
@@ -434,7 +434,7 @@ const LandingPage: React.FC = () => {
 
           </div>
           {/* Section Transition */}
-          <div id="overview" className="mt-20 -mb-24 flex flex-col items-center text-center relative z-10 pt-24 scroll-mt-24">
+          <div id="overview" className="mt-12 -mb-24 flex flex-col items-center text-center relative z-10 pt-20 scroll-mt-24">
             {/* Connecting Line */}
             <div className="h-16 w-[1px] bg-gradient-to-b from-transparent via-indigo-500/50 to-transparent mb-6"></div>
 
