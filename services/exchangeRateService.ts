@@ -8,26 +8,24 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 /**
  * Fetches all exchange rates from DolarApi.com and other sources
  */
+/**
+ * Fetches all exchange rates from the backend cache
+ */
 const fetchAllRates = async (): Promise<RateData> => {
     try {
-        // Fetch official (BCV)
-        const bcvRes = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
-        const bcvData = await bcvRes.json();
-
-        // Fetch Paralelo as a proxy for USDT if direct P2P is blocked
-        const paraRes = await fetch('https://ve.dolarapi.com/v1/dolares/paralelo');
-        const paraData = await paraRes.json();
-
-        const bcvPrice = bcvData.promedio || 341.74;
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const res = await fetch(`${apiUrl}/api/rates`);
+        if (!res.ok) throw new Error('Failed to fetch backend rates');
+        const data = await res.json();
 
         return {
-            bcv: bcvPrice,
-            euro: (bcvPrice * 1.156) || 395.0, // Tasa BCV EUR/VES es aprox 1.156 * USD/VES
-            usdt: paraData.promedio || 500.0, // Paralelo es una buena referencia para USDT en P2P
+            bcv: data.bcv,
+            euro: data.euro,
+            usdt: data.usdt,
         };
     } catch (error) {
-        console.error('Error fetching exchange rates:', error);
-        // Fallback rates based on actual context (Jan 2026) provided by USER
+        console.error('Error fetching exchange rates from backend:', error);
+        // Fallback rates based on actual context (Feb 2026)
         return {
             bcv: 341.74,
             euro: 395.0,

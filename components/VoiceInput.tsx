@@ -53,14 +53,16 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
         setTranscript('');
         setInputText('');
         processingRef.current = false;
-      }, 2000); // Show success for 2s
-    } catch (e) {
+      }, 1000); // Show success for 1s
+    } catch (e: any) {
       console.error(e);
+      setErrorMessage(e.message || "Error procesando voz");
       setState(AppState.ERROR);
       setTimeout(() => {
         setState(AppState.IDLE);
+        setErrorMessage('');
         processingRef.current = false;
-      }, 2000);
+      }, 3000);
     }
   }, []);
 
@@ -314,7 +316,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
             key="status-text"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-6 uppercase tracking-widest text-center"
+            className={`text-lg font-bold mb-6 uppercase tracking-widest text-center ${state === AppState.ERROR ? "text-red-500" : "text-gray-500 dark:text-gray-400"}`}
           >
             {state === AppState.LISTENING ? "Te escucho..." :
               state === AppState.PROCESSING ? "Procesando..." :
@@ -323,7 +325,12 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onMissionsClick
           </motion.h2>
 
           {/* Dynamic Content Area */}
-          <div className="w-full max-w-md text-center min-h-[100px] flex flex-col items-center justify-center">
+          <div className="w-full max-w-md text-center min-h-[120px] flex flex-col items-center justify-center">
+            {state === AppState.ERROR && (
+              <p className="text-sm text-red-400 mb-4 px-8 leading-relaxed">
+                Lo siento, hubo un problema. Por favor reintenta o usa el teclado.
+              </p>
+            )}
             {state === AppState.TYPING ? (
               <form onSubmit={handleTextSubmit} className="w-full">
                 <input

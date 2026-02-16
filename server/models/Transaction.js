@@ -27,5 +27,6 @@ const TransactionSchema = new mongoose.Schema({
 
 // Compound Index for efficient sync queries
 TransactionSchema.index({ userId: 1, updatedAt: 1 });
+TransactionSchema.index({ userId: 1, createdAt: -1 });
 
 export const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', TransactionSchema);

@@ -11,11 +11,31 @@ dotenv.config({ path: '.env.local' });
 
 import connectDB from './db.js';
 
+import helmet from 'helmet';
+import mongoSanitize from 'express-mongo-sanitize';
+import rateLimit from 'express-rate-limit';
+
 const app = express();
+
+// Security Headers
+// app.use(helmet());
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Sanitization against NoSQL Injection
+// app.use(mongoSanitize());
+
+// Rate Limiting
+/*
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 100, 
+    message: 'Too many requests from this IP'
+});
+app.use('/api', limiter);
+*/
 
 // Debug Middleware
 app.use((req, res, next) => {
@@ -35,6 +55,10 @@ app.use('/api/auth', authRoutes);
 // Admin Routes
 import adminRoutes from './routes/admin.js';
 app.use('/api/admin', adminRoutes);
+
+// Rates Route (Cached)
+import rateRoutes from './routes/rates.js';
+app.use('/api/rates', rateRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

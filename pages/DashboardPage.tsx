@@ -13,6 +13,7 @@ import { getAllRates } from '../services/exchangeRateService';
 import { authService, User } from '../services/authService';
 import { dbService } from '../services/dbService';
 import { OnboardingTour } from '../components/OnboardingTour';
+import { normalizeToUSD } from '../utils/financeUtils';
 
 // Tasas por defecto (Fallback)
 const DEFAULT_RATES: RateData = {
@@ -196,36 +197,36 @@ const DashboardPage: React.FC = () => {
     const updatedMissions = [...missions];
 
     targetMissions.forEach(target => {
-      const existingIndex = updatedMissions.findIndex(m => m.title === target.title); // Match by title to avoid ID issues if backend changes IDs
+      const existingIndex = updatedMissions.findIndex(m => m.title === target.title);
 
       if (existingIndex !== -1) {
-        // Update existing
         const existing = updatedMissions[existingIndex];
+        // ONLY update if there is a REAL change in progress or status
         if (
           existing.currentProgress !== target.currentProgress ||
-          existing.status !== target.status ||
-          !existing.tip // Fix missing tip
+          existing.status !== target.status
         ) {
-          updatedMissions[existingIndex] = {
+          const updated = {
             ...existing,
             currentProgress: target.currentProgress,
-            status: existing.status === 'locked' ? 'locked' : target.status, // Preserve locked status if logic dictates, but generally we want auto-update
+            status: target.status,
             tip: target.tip
           };
+          updatedMissions[existingIndex] = updated;
           hasChanges = true;
-          // Sync to DB
-          if (user) dbService.updateMission(user.id, updatedMissions[existingIndex]).catch(console.error);
+          // Sync to DB ONLY on change
+          if (user) dbService.updateMission(user.id, updated).catch(console.error);
         }
       } else {
         // Add new
         updatedMissions.push(target);
         hasChanges = true;
-        // Sync to DB
         if (user) dbService.addMission(user.id, target).catch(console.error);
       }
     });
 
     if (hasChanges) {
+      setTransactions(transactions); // Trigger re-render of transactions just in case
       setMissions(updatedMissions);
     }
 
@@ -275,43 +276,41 @@ const DashboardPage: React.FC = () => {
 
   // CRUD Operations
   const handleNewTransaction = async (analysis: ExpenseAnalysis) => {
+    const currentDate = new Date().toISOString().split('T')[0];
     if (analysis.is_invalid) {
       console.warn("Invalid command detected, ignoring:", analysis);
       throw new Error("Comando no reconocido como transacción financiera");
     }
 
-    let finalAmount = analysis.amount;
+    const { finalAmount: normalizedAmount, rateValue } = normalizeToUSD(
+      analysis.amount,
+      analysis.currency,
+      analysis.rate_type || null,
+      rates
+    );
+
+    let finalAmount = normalizedAmount;
     let originalAmount = analysis.amount;
     let originalCurrency = analysis.currency;
     let rateType = analysis.rate_type || null;
-    let rateValue: number | undefined;
 
-    const { getRateValue } = await import('../services/exchangeRateService');
-
-    // Logic for VES Transactions: ALWAYS use BCV rate
-    if (analysis.currency === 'VES') {
-      const bcvRate = await getRateValue('bcv');
-      finalAmount = analysis.amount / bcvRate;
-      rateValue = bcvRate;
-      rateType = 'bcv'; // Force rate type to BCV for VES transactions
+    // Sanity Check: Ensure amount is positive for Zod validation
+    if (!finalAmount || finalAmount <= 0) {
+      finalAmount = 0.01; // Minimum valid amount
     }
-    // Logic for USD Transactions with specific rate (Arbitrage)
-    else if (analysis.currency === 'USD' && rateType && rateType !== 'bcv') {
-      const specialRate = await getRateValue(rateType);
-      const vesValue = analysis.amount * specialRate;
-      const bcvRate = await getRateValue('bcv');
 
-      finalAmount = vesValue / bcvRate;
-      rateValue = specialRate; // Store the special rate used
-      console.log(`Arbitrage Transaction: ${analysis.amount} USD @ ${rateType} (${specialRate}) = ${vesValue} VES. Normalized to ${finalAmount} USD @ BCV (${bcvRate})`);
+    // Ensure date is strictly YYYY-MM-DD
+    let finalDate = (analysis.date || currentDate).split('T')[0];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(finalDate)) {
+      finalDate = currentDate;
     }
 
     const newTransaction: Transaction = {
       id: Date.now().toString(),
-      description: analysis.description,
-      amount: finalAmount,
-      category: analysis.category,
-      date: analysis.date,
+      description: (analysis.description || "Transacción").trim().substring(0, 100),
+      amount: Number(finalAmount.toFixed(2)),
+      category: analysis.category || "General",
+      date: finalDate,
       type: analysis.type,
       originalAmount: originalCurrency === 'VES' ? originalAmount : (rateType && rateType !== 'bcv' ? originalAmount : undefined),
       originalCurrency: originalCurrency,
@@ -319,20 +318,29 @@ const DashboardPage: React.FC = () => {
       rateValue: rateValue
     };
 
-    // Optimistic Update
+    console.log("Saving Transaction:", newTransaction);
+
+    // Optimistic Update: Add to state immediately
     setTransactions(prev => [newTransaction, ...prev]);
 
+    // Persist to DB asynchronously WITHOUT awaiting (Background process)
     if (user) {
-      try {
-        const savedTx = await dbService.addUserTransaction(user.id, newTransaction);
-        // Update with real ID from backend
-        setTransactions(prev => prev.map(t => t.id === newTransaction.id ? savedTx : t));
-      } catch (error) {
-        console.error("Failed to save transaction:", error);
-        // Rollback on failure
-        setTransactions(prev => prev.filter(t => t.id !== newTransaction.id));
-      }
+      dbService.addUserTransaction(user.id, newTransaction)
+        .then(savedTx => {
+          // Update the optimistic transaction with the real database ID
+          setTransactions(prev => prev.map(t => t.id === newTransaction.id ? savedTx : t));
+        })
+        .catch(error => {
+          console.error("Failed to save transaction in background:", error);
+          // Only rollback if absolutely necessary, but since it's optimistic, we keep it for UX 
+          // unless user refreshes or we show an error toast
+          setTransactions(prev => prev.filter(t => t.id !== newTransaction.id));
+          alert("No se pudo sincronizar la transacción. Se eliminó de la lista.");
+        });
     }
+
+    // Return immediately to let UI (VoiceInput) proceed to SUCCESS state
+    return;
   };
 
   const handleUpdateTransaction = async (updated: Transaction) => {

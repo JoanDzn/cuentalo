@@ -6,6 +6,7 @@ import AuthScreen from './components/AuthScreen';
 import DashboardPage from './pages/DashboardPage';
 
 import ProtectedRoute from './components/ProtectedRoute';
+import PublicRoute from './components/PublicRoute';
 import AdminLayout from './pages/admin/Layout';
 import AdminLoginPage from './pages/admin/LoginPage';
 import AdminDashboard from './pages/admin/Dashboard';
@@ -20,8 +21,22 @@ const AnimatedRoutes = () => {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<AuthScreen />} />
+        <Route
+          path="/"
+          element={
+            <PublicRoute>
+              <LandingPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/auth"
+          element={
+            <PublicRoute>
+              <AuthScreen />
+            </PublicRoute>
+          }
+        />
 
         <Route path="/admin/login" element={<AdminLoginPage />} />
 
@@ -42,8 +57,6 @@ const AnimatedRoutes = () => {
             </ProtectedRoute>
           }
         />
-
-
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

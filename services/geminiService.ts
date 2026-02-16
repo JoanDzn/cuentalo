@@ -1,90 +1,76 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { ExpenseAnalysis } from "../types";
 
-const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyAdjpA8Aq-jauu5idCNNQiSDTwrCZcH8S4";
 
-if (!apiKey) {
-  console.error("CRITICAL: GEMINI_API_KEY is missing in .env.local");
-}
-
-const ai = new GoogleGenAI({ apiKey: apiKey });
-
+/**
+ * Procesa el comando usando los modelos más actuales (gemini-2.5-flash) detectados.
+ */
 export const parseExpenseVoiceCommand = async (transcript: string): Promise<ExpenseAnalysis> => {
-  if (!apiKey) {
-    throw new Error("Missing API Key. Please check your .env.local file.");
-  }
-
   const currentDate = new Date().toISOString().split('T')[0];
 
-  const systemInstruction = `
-    You are 'cuentalo', a smart financial assistant for Venezuela. Extract transaction data from voice.
-    Current Date: ${currentDate}.
+  // Según el listado exhaustivo (Feb 2026), estos son los mejores modelos disponibles
+  const MODEL_CANDIDATES = [
+    { name: "gemini-2.5-flash", ver: "v1beta" },
+    { name: "gemini-flash-latest", ver: "v1beta" },
+    { name: "gemini-2.0-flash-lite", ver: "v1beta" },
+    { name: "gemini-pro-latest", ver: "v1beta" }
+  ];
+
+  const prompt = `
+    Extract financial data from: "${transcript}". Date: ${currentDate}.
+    Return strictly JSON with fields: amount(number), currency("USD"|"VES"), type("expense"|"income"), category, description, date, rate_type("bcv"|"euro"|"usdt"|null), is_invalid(boolean).
     
     Rules:
-    1. Extract the numeric amount.
-    2. DETECT CURRENCY: 
-       - If user says "bolívares", "bolos", "bs", "soberanos" -> 'VES'.
-       - If user says "dólares", "verdes", "usd", "$" or no currency specified -> 'USD'.
-    3. DETECT EXCHANGE RATE TYPE (rate_type):
-       - If user says "a tasa bcv", "tasa oficial" or "dolar" -> 'bcv'
-       - If user says "a tasa euro" or "euro" -> 'euro'
-       - If user says "a tasa binance", "usdt" or "cripto" -> 'usdt'
-       - If no rate mentioned, default to null (undefined) for USD, or 'bcv' for VES (unless context implies otherwise).
-    4. Infer type: 'expense' (spending, paying) or 'income' (earning, receiving, salary).
-    5. Infer category (Food, Transport, Salary, Ahorro, etc.).
-       - SPECIAL RULE FOR SAVINGS: If user says "ahorrar", "guardar", "reserva", "fondo", "chancho", or "alcancia", set category to 'Ahorro' and type to 'expense' (since it leaves the daily wallet).
-    6. Create a short description.
-    7. Default date to today if not specified.
-    8. VALIDATION: If the command is NOT a financial transaction (e.g. "5 harinas", "hola", "clima"), or you cannot find a price/amount, set 'is_invalid' to true.
-    
-    SPECIAL HANDLING FOR INCOME (Ingresos):
-    - If a user says "Me pagaron 65 dólares a tasa euro" (Income, USD, rate_type='euro'), strictly capture these fields. This implies an arbitration/conversion logic will be applied by the app.
-    - If a user says "Recibí 100 dólares" (no rate), rate_type should be 'bcv' or null.
-    
-    Examples:
-    - "Pagué 2500bs una hamburguesa a tasa euro" -> amount: 2500, currency: 'VES', rate_type: 'euro', type: 'expense'
-    - "Anota 1000bs de gasolina a tasa usdt" -> amount: 1000, currency: 'VES', rate_type: 'usdt', type: 'expense'
-    - "Gasté 50 dólares en taxi" -> amount: 50, currency: 'USD', rate_type: 'bcv', type: 'expense'
-    - "Me pagaron 65 dólares a tasa euro" -> amount: 65, currency: 'USD', rate_type: 'euro', type: 'income'
-    - "Cobré 100 dólares" -> amount: 100, currency: 'USD', rate_type: 'bcv', type: 'income'
-    - "Guardé 30 dólares para el viaje" -> amount: 30, currency: 'USD', category: 'Ahorro', type: 'expense', description: 'Ahorro para viaje'
-    
-    Output strictly JSON.
+    - Default currency: USD.
+    - If "Bs", "Bolos", "Bolivares" -> currency: "VES", rate_type: "bcv".
   `;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
-      contents: transcript,
-      config: {
-        systemInstruction: systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            amount: { type: Type.NUMBER },
-            currency: { type: Type.STRING, enum: ["USD", "VES"] },
-            category: { type: Type.STRING },
-            description: { type: Type.STRING },
-            date: { type: Type.STRING },
-            type: { type: Type.STRING, enum: ["expense", "income"] },
-            rate_type: { type: Type.STRING, enum: ["bcv", "euro", "usdt"] },
-            is_invalid: { type: Type.BOOLEAN }
-          },
-          required: ["amount", "currency", "category", "description", "date", "type", "rate_type", "is_invalid"]
+  let lastError: any;
+
+  for (const model of MODEL_CANDIDATES) {
+    try {
+      console.log(`Attempting Gemini: ${model.name}`);
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/${model.ver}/models/${model.name}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json"
+            }
+          })
         }
+      );
+
+      if (response.status === 404) continue;
+
+      if (response.status === 429) {
+        const errData = await response.json();
+        const waitSecs = errData.error?.message?.match(/(\d+\.\d+)s/)?.[1] || "algunos";
+        throw new Error(`CUOTA EXCEDIDA: Por favor espera ${waitSecs} segundos e intenta de nuevo.`);
       }
-    });
 
-    const jsonText = response.text;
-    if (!jsonText) throw new Error("No response from AI");
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error?.message || `Error ${response.status}`);
+      }
 
-    const parsed = JSON.parse(jsonText) as any;
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    return parsed as ExpenseAnalysis;
+      if (!text) throw new Error("IA no devolvió texto.");
+      return JSON.parse(text) as ExpenseAnalysis;
 
-  } catch (error) {
-    console.error("Gemini Extraction Error:", error);
-    throw error;
+    } catch (error: any) {
+      console.error(`Failure with ${model.name}:`, error.message);
+      lastError = error;
+      // Si es un error de cuota, lanzamos el error para que el usuario lo vea y espere
+      if (error.message.includes("CUOTA")) throw error;
+    }
   }
+
+  throw new Error(lastError?.message || "No se pudo conectar con la IA después de varios intentos.");
 };

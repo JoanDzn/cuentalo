@@ -78,7 +78,11 @@ export const dbService = {
       headers: getHeaders(),
       body: JSON.stringify(transaction)
     });
-    if (!res.ok) throw new Error('Failed to add transaction');
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      console.error("Server Synchronization Error:", errBody);
+      throw new Error(errBody.message || 'Failed to add transaction');
+    }
     const data = await res.json();
     return { ...data, id: data._id };
   },

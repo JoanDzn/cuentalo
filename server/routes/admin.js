@@ -124,10 +124,30 @@ router.get('/users', protectAdmin, async (req, res) => {
 
 // Helper for Balance (Calculated)
 const calculateUserBalance = async (userId) => {
-    const txs = await Transaction.find({ userId });
-    return txs.reduce((acc, curr) => {
-        return curr.type === 'income' ? acc + curr.amount : acc - curr.amount;
-    }, 0);
+    const result = await Transaction.aggregate([
+        {
+            $match: {
+                userId: new mongoose.Types.ObjectId(userId),
+                isDeleted: { $ne: true }
+            }
+        },
+        {
+            $group: {
+                _id: null,
+                totalIncome: {
+                    $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] }
+                },
+                totalExpense: {
+                    $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0] }
+                }
+            }
+        }
+    ]);
+
+    if (result.length > 0) {
+        return result[0].totalIncome - result[0].totalExpense;
+    }
+    return 0;
 };
 
 // GET Single User details (for Edit Modal)
