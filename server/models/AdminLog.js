@@ -4,7 +4,7 @@ const AdminLogSchema = new mongoose.Schema({
     type: {
         type: String,
         required: true,
-        enum: ['LOGIN', 'AUDIO_ERROR', 'AI_RESPONSE', 'DB_CORRECTION', 'SYSTEM_ACTION']
+        enum: ['LOGIN', 'AUDIO_ERROR', 'AI_RESPONSE', 'DB_CORRECTION', 'SYSTEM_ACTION', 'PASSWORD_RESET']
     },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     details: { type: mongoose.Schema.Types.Mixed }, // Flexible payload

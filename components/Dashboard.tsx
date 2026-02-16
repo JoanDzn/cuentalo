@@ -155,8 +155,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
     // Use createdAt for precise time-based ordering, fallback to date field
     const getTransactionTimestamp = (t: Transaction) => {
         // Priority 1: Use createdAt if available (includes time)
-        if ((t as any).createdAt) {
-            const ts = new Date((t as any).createdAt).getTime();
+        if (t.createdAt) {
+            const ts = new Date(t.createdAt).getTime();
             if (!isNaN(ts)) return ts;
         }
 

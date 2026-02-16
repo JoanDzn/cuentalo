@@ -8,14 +8,12 @@ export interface User {
 }
 
 export const authService = {
-  // ... (previous methods)
-  // Need to update login methods to store token and remove local DB dependency
-
   listeners: new Set<(user: User | null) => void>(),
   currentUser: null as User | null,
 
   async signInWithEmail(email: string, password: string): Promise<User> {
     const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+    console.log("Calling API at:", BASE_URL);
     const API_URL = `${BASE_URL}/api`;
     const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
@@ -35,7 +33,6 @@ export const authService = {
     if (!res.ok) throw new Error(data.message || 'Error de autenticación');
 
     localStorage.setItem('jwt_token', data.accessToken);
-    // Store refresh token in HTTPOnly cookie ideally, or localStorage if necessary
     if (data.refreshToken) localStorage.setItem('refresh_token', data.refreshToken);
 
     const user = { ...data.user, createdAt: new Date().toISOString() };
@@ -96,7 +93,6 @@ export const authService = {
 
   onAuthStateChange(callback: (user: User | null) => void): () => void {
     this.listeners.add(callback);
-    // Restore session from localStorage if token exists
     const token = localStorage.getItem('jwt_token');
     const storedSession = localStorage.getItem('cuentalo_session');
 
@@ -135,7 +131,6 @@ export const authService = {
 
       if (res.ok) {
         const data = await res.json();
-        // Update local state and storage
         const user = { ...data, createdAt: data.createdAt || new Date().toISOString() };
         this.currentUser = user;
         this.notifyListeners(user);
@@ -145,5 +140,27 @@ export const authService = {
       console.error("Failed to refresh user:", e);
     }
     return this.currentUser;
+  },
+
+  async requestPasswordReset(email: string): Promise<void> {
+    const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+    const res = await fetch(`${BASE_URL}/api/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Error al solicitar el enlace');
+  },
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+    const res = await fetch(`${BASE_URL}/api/auth/reset-password/${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Error al restablecer la contraseña');
   }
 };

@@ -6,6 +6,8 @@ import { User } from '../models/User.js';
 import { RefreshToken } from '../models/RefreshToken.js';
 import { AdminLog } from '../models/AdminLog.js';
 import connectDB from '../db.js';
+import crypto from 'crypto';
+import { mailService } from '../services/mailService.js';
 
 const router = express.Router();
 
@@ -36,6 +38,104 @@ function java_uuid() {
         return v.toString(16);
     });
 }
+
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Solicita enlace de recuperación (Protección de enumeración incluida)
+ */
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ message: 'Email es requerido' });
+
+        await connectDB();
+        const user = await User.findOne({ email });
+
+        // Protección contra enumeración: 
+        // Siempre devolvemos éxito incluso si el usuario no existe.
+        if (!user) {
+            console.warn(`Forgot password attempt for non-existent email: ${email}`);
+            return res.json({ message: 'Si el correo está registrado, recibirás un enlace de recuperación.' });
+        }
+
+        // Generar token criptográfico (Hex para la URL, SHA256 para la DB)
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+        // Guardar en DB con expiración de 1 hora
+        user.resetPasswordToken = hashedToken;
+        user.resetPasswordExpire = Date.now() + 3600000;
+        await user.save();
+
+        // Enviar Correo
+        try {
+            await mailService.sendRecoveryEmail(user.email, resetToken, user.name);
+
+            // Log de auditoría
+            await AdminLog.create({
+                type: 'PASSWORD_RESET',
+                userId: user._id,
+                details: { status: 'REQUESTED', ip: req.ip },
+                ip: req.ip
+            });
+
+        } catch (emailError) {
+            console.error('Email service failed:', emailError);
+            // En producción, podrías querer revertir los campos del usuario aquí
+        }
+
+        res.json({ message: 'Si el correo está registrado, recibirás un enlace de recuperación.' });
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        res.status(500).json({ message: 'Error interno del servidor' });
+    }
+});
+
+/**
+ * @route   POST /api/auth/reset-password/:token
+ * @desc    Restablece la contraseña usando el token
+ */
+router.post('/reset-password/:token', async (req, res) => {
+    try {
+        const { password } = req.body;
+        if (!password) return res.status(400).json({ message: 'Nueva contraseña requerida' });
+
+        // Hashear el token recibido para compararlo con el de la DB
+        const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+        await connectDB();
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpire: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: 'El enlace es inválido o ha expirado.' });
+        }
+
+        // Hashear y actualizar contraseña
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(password, salt);
+
+        // Limpiar tokens de recuperación
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save();
+
+        // Log de auditoría
+        await AdminLog.create({
+            type: 'PASSWORD_RESET',
+            userId: user._id,
+            details: { status: 'SUCCESS', ip: req.ip },
+            ip: req.ip
+        });
+
+        res.json({ message: 'Contraseña actualizada con éxito. Ya puedes iniciar sesión.' });
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ message: 'Error al restablecer contraseña' });
+    }
+});
 
 // REGISTER
 router.post('/register', async (req, res) => {
@@ -144,23 +244,62 @@ router.post('/refresh', async (req, res) => {
     }
 });
 
+// Lazy initialization of OAuth2Client
+let client;
+const getClient = () => {
+    if (!client) {
+        client = new OAuth2Client(
+            process.env.VITE_GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET
+        );
+    }
+    return client;
+};
+
 // GOOGLE AUTH
 router.post('/google', async (req, res) => {
     try {
-        const { token } = req.body;
-        const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
-        const ticket = await client.verifyIdToken({
-            idToken: token,
-            audience: process.env.VITE_GOOGLE_CLIENT_ID,
-        });
-        const payload = ticket.getPayload();
-        const { email, name, picture, sub: googleId } = payload;
+        const { token, redirectUri } = req.body;
+        if (!token) return res.status(400).json({ message: 'Token required' });
 
+        const _client = getClient();
+        let payload;
+
+        try {
+            if (redirectUri) {
+                const { tokens } = await _client.getToken({
+                    code: token,
+                    redirect_uri: redirectUri
+                });
+                _client.setCredentials(tokens);
+
+                const ticket = await _client.verifyIdToken({
+                    idToken: tokens.id_token,
+                    audience: process.env.VITE_GOOGLE_CLIENT_ID,
+                });
+                payload = ticket.getPayload();
+            } else {
+                const ticket = await _client.verifyIdToken({
+                    idToken: token,
+                    audience: process.env.VITE_GOOGLE_CLIENT_ID,
+                });
+                payload = ticket.getPayload();
+            }
+        } catch (verifyError) {
+            console.error("Google Token Verification Failed:", verifyError);
+            return res.status(401).json({ message: 'Error de verificación con Google', error: verifyError.message });
+        }
+
+        const { email, name, picture, sub: googleId } = payload;
         await connectDB();
         let user = await User.findOne({ email });
 
         if (!user) {
             user = await User.create({ googleId, email, name, picture, role: 'user' });
+        } else if (!user.googleId) {
+            user.googleId = googleId;
+            if (!user.picture) user.picture = picture;
+            await user.save();
         }
 
         const { accessToken, refreshToken } = await createTokens(user);
@@ -173,7 +312,8 @@ router.post('/google', async (req, res) => {
         });
 
     } catch (e) {
-        res.status(401).json({ message: 'Auth failed', error: e.message });
+        console.error("Critical Google Auth Error:", e);
+        res.status(500).json({ message: 'Error interno en Google Auth', error: e.message });
     }
 });
 

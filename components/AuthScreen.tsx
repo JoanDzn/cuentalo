@@ -83,6 +83,11 @@ const AuthScreen: React.FC = () => {
       if (hasRun) return;
 
       window.sessionStorage.setItem('google_auth_running', 'true');
+
+      // Clear code from URL immediately to prevent re-runs on refresh
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+
       handleGoogleCode(code).finally(() => {
         window.sessionStorage.removeItem('google_auth_running');
       });
@@ -228,6 +233,17 @@ const AuthScreen: React.FC = () => {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              {isLogin && (
+                <div className="flex justify-end mt-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/auth/forgot-password')}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+              )}
               {!isLogin && (
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   Mínimo 6 caracteres

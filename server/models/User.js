@@ -8,6 +8,11 @@ const UserSchema = new mongoose.Schema({
     picture: { type: String },
     role: { type: String, default: 'user' },
     isActive: { type: Boolean, default: true },
+
+    // Recovery Fields
+    resetPasswordToken: { type: String },
+    resetPasswordExpire: { type: Date },
+
     createdAt: { type: Date, default: Date.now },
 });
 

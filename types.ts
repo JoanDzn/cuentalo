@@ -18,6 +18,7 @@ export interface Transaction {
   originalCurrency?: Currency;
   rateType?: RateType; // Type of exchange rate used
   rateValue?: number; // Actual rate value at time of transaction
+  createdAt?: string; // Precision timestamp
 }
 
 export interface ExpenseAnalysis {

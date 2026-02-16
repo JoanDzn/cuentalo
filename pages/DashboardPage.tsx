@@ -122,7 +122,8 @@ const DashboardPage: React.FC = () => {
               amount: item.amount,
               category: item.type === 'expense' ? 'Suscripciones' : 'Salario',
               date: today.toISOString().split('T')[0], // YYYY-MM-DD
-              type: item.type
+              type: item.type,
+              createdAt: today.toISOString()
             });
           }
         }
@@ -226,7 +227,6 @@ const DashboardPage: React.FC = () => {
     });
 
     if (hasChanges) {
-      setTransactions(transactions); // Trigger re-render of transactions just in case
       setMissions(updatedMissions);
     }
 
@@ -315,7 +315,8 @@ const DashboardPage: React.FC = () => {
       originalAmount: originalCurrency === 'VES' ? originalAmount : (rateType && rateType !== 'bcv' ? originalAmount : undefined),
       originalCurrency: originalCurrency,
       rateType: rateType || undefined,
-      rateValue: rateValue
+      rateValue: rateValue,
+      createdAt: new Date().toISOString()
     };
 
     console.log("Saving Transaction:", newTransaction);
@@ -410,7 +411,8 @@ const DashboardPage: React.FC = () => {
       amount: t.amount,
       description: t.description,
       category: t.category,
-      type: t.type
+      type: t.type,
+      createdAt: new Date().toISOString()
     };
     setTransactions(prev => [newT, ...prev]);
     if (user) dbService.addUserTransaction(user.id, newT);
