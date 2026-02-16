@@ -10,6 +10,7 @@ export interface User {
 export const authService = {
   listeners: new Set<(user: User | null) => void>(),
   currentUser: null as User | null,
+  refreshPromise: null as Promise<string | null> | null,
 
   async signInWithEmail(email: string, password: string): Promise<User> {
     const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
@@ -162,5 +163,44 @@ export const authService = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Error al restablecer la contraseña');
+  },
+
+  async refreshAccessToken(): Promise<string | null> {
+    if (this.refreshPromise) return this.refreshPromise;
+
+    this.refreshPromise = (async () => {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) return null;
+
+      const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+      try {
+        const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem('jwt_token', data.accessToken);
+          if (data.refreshToken) {
+            localStorage.setItem('refresh_token', data.refreshToken);
+          }
+          return data.accessToken;
+        } else {
+          // Refresh failed (expired/invalid), force logout
+          console.warn("Refresh token invalid, logging out");
+          this.signOut();
+          return null;
+        }
+      } catch (e) {
+        console.error("Error refreshing token:", e);
+        return null;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
   }
 };

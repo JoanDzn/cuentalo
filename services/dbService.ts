@@ -4,6 +4,7 @@
  */
 
 import { Transaction, SavingsMission, RecurringTransaction, UserSettings } from '../types';
+import { authService } from './authService';
 
 const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
 const API_URL = `${BASE_URL}/api`;
@@ -23,6 +24,42 @@ const getHeaders = () => {
   };
 };
 
+// Start Helper: Authenticated Fetch with Retry
+const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+  // First attempt
+  let response = await fetch(url, {
+    ...options,
+    headers: {
+      ...getHeaders(),
+      ...options.headers
+    }
+  });
+
+  // If 401, try refreshing token
+  if (response.status === 401) {
+    console.warn("Access token expired, attempting refresh...");
+    const newToken = await authService.refreshAccessToken();
+
+    if (newToken) {
+      // Retry with new token
+      console.log("Token refreshed, retrying request...");
+      response = await fetch(url, {
+        ...options,
+        headers: {
+          ...getHeaders(), // New token will be picked up here
+          ...options.headers
+        }
+      });
+    } else {
+      console.warn("Refresh failed or no refresh token available.");
+      // Let the caller handle the persistent 401 (likely logout)
+    }
+  }
+
+  return response;
+};
+// End Helper
+
 // Check if token exists
 const hasToken = () => !!localStorage.getItem('jwt_token');
 
@@ -30,14 +67,16 @@ export const dbService = {
 
   // --- Transactions ---
 
+
+
   async getUserData(userId: string): Promise<UserData> {
     if (!hasToken()) return { transactions: [], savingsMissions: [], recurringTransactions: [] };
 
     try {
       // Parallel Fetch
       const [txRes, missionRes] = await Promise.all([
-        fetch(`${API_URL}/transactions`, { headers: getHeaders() }),
-        fetch(`${API_URL}/missions`, { headers: getHeaders() })
+        fetchWithAuth(`${API_URL}/transactions`),
+        fetchWithAuth(`${API_URL}/missions`)
       ]);
 
       if (txRes.status === 401 || missionRes.status === 401) {
@@ -73,9 +112,8 @@ export const dbService = {
   },
 
   async addUserTransaction(userId: string, transaction: Transaction): Promise<Transaction> {
-    const res = await fetch(`${API_URL}/transactions`, {
+    const res = await fetchWithAuth(`${API_URL}/transactions`, {
       method: 'POST',
-      headers: getHeaders(),
       body: JSON.stringify(transaction)
     });
     if (!res.ok) {
@@ -88,9 +126,8 @@ export const dbService = {
   },
 
   async updateUserTransaction(userId: string, transactionId: string, updates: Partial<Transaction>): Promise<Transaction> {
-    const res = await fetch(`${API_URL}/transactions/${transactionId}`, {
+    const res = await fetchWithAuth(`${API_URL}/transactions/${transactionId}`, {
       method: 'PUT',
-      headers: getHeaders(),
       body: JSON.stringify(updates)
     });
     if (!res.ok) throw new Error('Failed to update transaction');
@@ -99,9 +136,8 @@ export const dbService = {
   },
 
   async deleteUserTransaction(userId: string, transactionId: string): Promise<void> {
-    const res = await fetch(`${API_URL}/transactions/${transactionId}`, {
-      method: 'DELETE',
-      headers: getHeaders()
+    const res = await fetchWithAuth(`${API_URL}/transactions/${transactionId}`, {
+      method: 'DELETE'
     });
     if (!res.ok) throw new Error('Failed to delete transaction');
   },
@@ -114,9 +150,8 @@ export const dbService = {
   // --- Missions ---
 
   async addMission(userId: string, mission: SavingsMission): Promise<SavingsMission> {
-    const res = await fetch(`${API_URL}/missions`, {
+    const res = await fetchWithAuth(`${API_URL}/missions`, {
       method: 'POST',
-      headers: getHeaders(),
       body: JSON.stringify(mission)
     });
     if (!res.ok) throw new Error('Failed to add mission');
@@ -133,9 +168,8 @@ export const dbService = {
     // For specific hardcoded missions (like 'emergency-fund'), they might not have _id yet if not saved.
     // But addMission creates them.
 
-    const res = await fetch(`${API_URL}/missions/${mission.id}`, {
+    const res = await fetchWithAuth(`${API_URL}/missions/${mission.id}`, {
       method: 'PUT',
-      headers: getHeaders(),
       body: JSON.stringify(mission)
     });
     // If 404/500, caller might try addMission
