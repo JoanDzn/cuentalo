@@ -60,6 +60,10 @@ app.use('/api/admin', adminRoutes);
 import rateRoutes from './routes/rates.js';
 app.use('/api/rates', rateRoutes);
 
+// AI Routes
+import aiRoutes from './routes/ai.js';
+app.use('/api/ai', aiRoutes);
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date() });
