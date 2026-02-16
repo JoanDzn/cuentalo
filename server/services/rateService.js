@@ -15,18 +15,23 @@ export const rateService = {
 
         try {
             console.log("Fetching fresh rates from DolarApi...");
-            const bcvRes = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+            // Use Promise.all for parallel fetching
+            const [bcvRes, paraRes, euroRes] = await Promise.all([
+                fetch('https://ve.dolarapi.com/v1/dolares/oficial'),
+                fetch('https://ve.dolarapi.com/v1/dolares/paralelo'),
+                fetch('https://ve.dolarapi.com/v1/euros/oficial')
+            ]);
+
             const bcvData = await bcvRes.json();
-
-            const paraRes = await fetch('https://ve.dolarapi.com/v1/dolares/paralelo');
             const paraData = await paraRes.json();
+            const euroData = await euroRes.json();
 
-            const bcvPrice = bcvData.promedio || 341.74;
+            const bcvPrice = bcvData.promedio || 341.74; // Fallback should be updated if possible
 
             const rates = {
                 bcv: bcvPrice,
-                euro: Number((bcvPrice * 1.156).toFixed(2)),
-                usdt: paraData.promedio || 500.0,
+                euro: euroData.promedio || (bcvPrice * 1.05), // Better fallback
+                usdt: paraData.promedio || (bcvPrice * 1.1),
                 updatedAt: new Date()
             };
 

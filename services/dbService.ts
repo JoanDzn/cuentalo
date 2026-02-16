@@ -74,9 +74,10 @@ export const dbService = {
 
     try {
       // Parallel Fetch
-      const [txRes, missionRes] = await Promise.all([
+      const [txRes, missionRes, recurringRes] = await Promise.all([
         fetchWithAuth(`${API_URL}/transactions`),
-        fetchWithAuth(`${API_URL}/missions`)
+        fetchWithAuth(`${API_URL}/missions`),
+        fetchWithAuth(`${API_URL}/recurring`)
       ]);
 
       if (txRes.status === 401 || missionRes.status === 401) {
@@ -91,13 +92,12 @@ export const dbService = {
 
       const transactionsRaw = await txRes.json();
       const missionsRaw = await missionRes.json();
+      const recurringRaw = await recurringRes.json();
 
       // Map _id to id
       const transactions: Transaction[] = transactionsRaw.map((t: any) => ({ ...t, id: t._id }));
       const missions: SavingsMission[] = missionsRaw.map((m: any) => ({ ...m, id: m._id }));
-
-      // Recurring could be stored in User Settings or separate endpoint (TODO)
-      const recurring: RecurringTransaction[] = [];
+      const recurring: RecurringTransaction[] = recurringRaw.map((r: any) => ({ ...r, id: r._id }));
 
       return {
         transactions,
@@ -179,7 +179,14 @@ export const dbService = {
   },
 
   async updateUserRecurringTransactions(userId: string, recurring: RecurringTransaction[]): Promise<void> {
-    // TODO: Implement endpoint
+    const res = await fetchWithAuth(`${API_URL}/recurring/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ items: recurring })
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to sync recurring transactions');
+    }
   },
 
   async updateUserSettings(userId: string, settings: any): Promise<void> {

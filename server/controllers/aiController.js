@@ -28,6 +28,8 @@ export const aiController = {
                 Rules:
                 - Default currency: USD.
                 - If "Bs", "Bolos", "Bolivares" -> currency: "VES", rate_type: "bcv".
+                - If context is "ahorre", "guarde", "save", "saving" -> type: "expense", category: "Ahorro". This represents moving money OUT of disposable income INTO savings.
+                - If context is "salary", "sueldo", "ingreso" -> type: "income".
             `;
 
             let lastError;

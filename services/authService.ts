@@ -116,7 +116,34 @@ export const authService = {
   },
 
   async updateUserProfile(updates: Partial<User>): Promise<void> {
-    // Implement profile update API call
+    const token = localStorage.getItem('jwt_token');
+    if (!token) throw new Error('No authenticado');
+
+    const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+
+    // Explicitly allow picture updates via photoURL if passed
+    const payload: any = { ...updates };
+    if (updates.photoURL) payload.photoURL = updates.photoURL;
+
+    const res = await fetch(`${BASE_URL}/api/auth/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      throw new Error('Error al actualizar perfil');
+    }
+
+    const updatedUser = await res.json();
+    // Map backend 'picture' back to 'photoURL' for frontend consistency if needed
+    if (updatedUser.picture) updatedUser.photoURL = updatedUser.picture;
+
+    this.currentUser = { ...this.currentUser, ...updatedUser };
+    this.notifyListeners(this.currentUser);
   },
 
   async refreshUser(): Promise<User | null> {

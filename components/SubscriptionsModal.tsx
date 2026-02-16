@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, CreditCard, TrendingUp, Calendar, Check } from 'lucide-react';
+import { X, Plus, Trash2, CreditCard, TrendingUp, Calendar, Check, Edit2 } from 'lucide-react';
 import { RecurringTransaction, TransactionType } from '../types';
 
 interface SubscriptionsModalProps {
@@ -26,12 +26,17 @@ const PREDEFINED_INCOMES = [
 const SubscriptionsModal: React.FC<SubscriptionsModalProps> = ({ isOpen, onClose, recurringItems = [], onUpdate, initialTab = 'expense' }) => {
     const [activeTab, setActiveTab] = useState<TransactionType>(initialTab);
     const [isAdding, setIsAdding] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     // Reset tab when modal opens
     useEffect(() => {
         if (isOpen) {
             setActiveTab(initialTab);
             setIsAdding(false);
+            setEditingId(null);
+            setNewName('');
+            setNewAmount('');
+            setNewDay('1');
         }
     }, [isOpen, initialTab]);
 
@@ -44,28 +49,56 @@ const SubscriptionsModal: React.FC<SubscriptionsModalProps> = ({ isOpen, onClose
         setNewName(service.name);
         setNewAmount(service.defaultAmount.toString());
         setIsAdding(true);
+        setEditingId(null);
     };
 
-    const handleAdd = () => {
+    const handleEditClick = (item: RecurringTransaction) => {
+        setNewName(item.name);
+        setNewAmount(item.amount.toString());
+        setNewDay(item.day.toString());
+        setEditingId(item.id);
+        setIsAdding(true);
+    };
+
+    const handleSave = () => {
         if (!newName || !newAmount || !newDay) return;
 
+        // Smart parsing for amounts (commas -> dots)
+        const normalizedAmount = newAmount.replace(',', '.');
+        // Handle "9..99" edge case if user typos
+        const cleanAmount = normalizedAmount.replace(/\.{2,}/g, '.');
+
+        const amount = parseFloat(cleanAmount);
         const day = parseInt(newDay);
-        if (day < 1 || day > 31) return;
 
-        // Ensure we create a valid ID
-        const newItem: RecurringTransaction = {
-            id: Date.now().toString(),
-            name: newName,
-            amount: parseFloat(newAmount),
-            day: day,
-            type: activeTab
-        };
+        if (isNaN(amount) || amount < 0) return; // Basic validation
+        if (isNaN(day) || day < 1 || day > 31) return;
 
-        onUpdate([...recurringItems, newItem]);
+        if (editingId) {
+            // Update existing
+            const updatedItems = recurringItems.map(item =>
+                item.id === editingId
+                    ? { ...item, name: newName, amount, day, type: activeTab }
+                    : item
+            );
+            onUpdate(updatedItems);
+        } else {
+            // Create new
+            const newItem: RecurringTransaction = {
+                id: Date.now().toString(),
+                name: newName,
+                amount,
+                day,
+                type: activeTab
+            };
+            onUpdate([...recurringItems, newItem]);
+        }
 
+        // Reset
         setNewName('');
         setNewAmount('');
         setNewDay('1');
+        setEditingId(null);
         setIsAdding(false);
     };
 
@@ -111,7 +144,7 @@ const SubscriptionsModal: React.FC<SubscriptionsModalProps> = ({ isOpen, onClose
 
                                 <div className="flex bg-gray-100 dark:bg-[#2C2C2C] p-1 rounded-xl mb-6">
                                     <button
-                                        onClick={() => { setActiveTab('expense'); setIsAdding(false); }}
+                                        onClick={() => { setActiveTab('expense'); setIsAdding(false); setEditingId(null); }}
                                         className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'expense'
                                             ? 'bg-white dark:bg-[#1E1E1E] shadow-sm text-gray-900 dark:text-white'
                                             : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
@@ -120,7 +153,7 @@ const SubscriptionsModal: React.FC<SubscriptionsModalProps> = ({ isOpen, onClose
                                         Gastos
                                     </button>
                                     <button
-                                        onClick={() => { setActiveTab('income'); setIsAdding(false); }}
+                                        onClick={() => { setActiveTab('income'); setIsAdding(false); setEditingId(null); }}
                                         className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'income'
                                             ? 'bg-white dark:bg-[#1E1E1E] shadow-sm text-gray-900 dark:text-white'
                                             : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
@@ -191,10 +224,16 @@ const SubscriptionsModal: React.FC<SubscriptionsModalProps> = ({ isOpen, onClose
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className={`font-bold ${item.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`font-bold mr-2 ${item.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
                                                     {item.type === 'income' ? '+' : ''}${item.amount.toFixed(2)}
                                                 </span>
+                                                <button
+                                                    onClick={() => handleEditClick(item)}
+                                                    className="text-gray-400 hover:text-indigo-500 transition-colors p-1"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
                                                 <button
                                                     onClick={() => handleDelete(item.id)}
                                                     className="text-gray-400 hover:text-red-500 transition-colors p-1"
@@ -214,6 +253,11 @@ const SubscriptionsModal: React.FC<SubscriptionsModalProps> = ({ isOpen, onClose
                                     {isAdding ? (
                                         <div className="p-4 bg-white dark:bg-[#1E1E1E] rounded-2xl border-2 border-indigo-100 dark:border-indigo-900/30 animate-fade-in shadow-lg">
                                             <div className="space-y-3">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <h4 className="text-sm font-bold text-gray-900 dark:text-white">
+                                                        {editingId ? 'Editar' : 'Agregar'} {activeTab === 'expense' ? 'Gasto' : 'Ingreso'}
+                                                    </h4>
+                                                </div>
                                                 <div>
                                                     <label className="text-xs font-bold text-gray-400 uppercase">Nombre</label>
                                                     <input
@@ -229,7 +273,7 @@ const SubscriptionsModal: React.FC<SubscriptionsModalProps> = ({ isOpen, onClose
                                                     <div className="flex-1">
                                                         <label className="text-xs font-bold text-gray-400 uppercase">Monto ($)</label>
                                                         <input
-                                                            type="number"
+                                                            type="text"
                                                             placeholder="0.00"
                                                             className="w-full bg-gray-50 dark:bg-[#2C2C2C] rounded-lg px-3 py-2 text-sm font-semibold outline-none border border-transparent focus:border-indigo-500 text-gray-900 dark:text-white mt-1"
                                                             value={newAmount}
@@ -250,13 +294,13 @@ const SubscriptionsModal: React.FC<SubscriptionsModalProps> = ({ isOpen, onClose
                                                 </div>
                                                 <div className="flex gap-2 pt-2">
                                                     <button
-                                                        onClick={handleAdd}
+                                                        onClick={handleSave}
                                                         className="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors"
                                                     >
-                                                        Guardar
+                                                        {editingId ? 'Actualizar' : 'Guardar'}
                                                     </button>
                                                     <button
-                                                        onClick={() => setIsAdding(false)}
+                                                        onClick={() => { setIsAdding(false); setEditingId(null); }}
                                                         className="px-4 py-2 bg-gray-100 dark:bg-[#333] text-gray-600 dark:text-gray-300 rounded-lg text-sm font-bold hover:bg-gray-200 dark:hover:bg-[#444] transition-colors"
                                                     >
                                                         Cancelar
@@ -266,7 +310,7 @@ const SubscriptionsModal: React.FC<SubscriptionsModalProps> = ({ isOpen, onClose
                                         </div>
                                     ) : (
                                         <button
-                                            onClick={() => { setIsAdding(true); setNewName(''); setNewAmount(''); setNewDay('1'); }}
+                                            onClick={() => { setIsAdding(true); setNewName(''); setNewAmount(''); setNewDay('1'); setEditingId(null); }}
                                             className="w-full py-4 rounded-2xl border-2 border-dashed border-gray-200 dark:border-[#333] text-gray-400 dark:text-gray-500 hover:border-indigo-500 hover:text-indigo-500 transition-colors flex items-center justify-center gap-2 font-semibold text-sm group"
                                         >
                                             <Plus size={18} className="group-hover:scale-110 transition-transform" />

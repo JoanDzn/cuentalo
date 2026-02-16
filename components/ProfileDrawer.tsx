@@ -33,14 +33,16 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
   useEffect(() => {
     if (user) {
       setEditName(user.name);
-      setEditPhoto(user.photoURL || '');
+      setEditPhoto(user.photoURL || (user as any).picture || '');
     }
   }, [user]);
 
   const handleSaveProfile = async () => {
     if (!user) return;
     try {
-      await authService.updateUserProfile({ name: editName, photoURL: editPhoto });
+      const updates: any = { name: editName };
+      if (editPhoto) updates.photoURL = editPhoto;
+      await authService.updateUserProfile(updates);
       setIsEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -114,9 +116,9 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
                     {/* Avatar Section */}
                     <div className="flex flex-col items-center text-center mb-8 relative">
                       <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mb-4 shadow-lg overflow-hidden ring-4 ring-gray-50 dark:ring-[#2C2C2C]">
-                        {user.photoURL ? (
+                        {user.photoURL || (user as any).picture ? (
                           <img
-                            src={user.photoURL}
+                            src={user.photoURL || (user as any).picture}
                             alt={user.name}
                             className="w-full h-full object-cover"
                           />

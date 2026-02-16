@@ -341,4 +341,36 @@ router.get('/me', async (req, res) => {
     }
 });
 
+// UPDATE PROFILE
+router.put('/profile', async (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) return res.status(401).json({ message: 'No token provided' });
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+        await connectDB();
+
+        const { name, photoURL } = req.body;
+        const user = await User.findById(decoded.id);
+
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        if (name) user.name = name;
+        if (photoURL) user.picture = photoURL; // Changed to match User model 'picture' field
+
+        await user.save();
+
+        res.json({
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            picture: user.picture,
+            role: user.role
+        });
+    } catch (e) {
+        console.error("Profile update error:", e);
+        res.status(500).json({ message: 'Error updating profile', error: e.message });
+    }
+});
+
 export default router;

@@ -1,3 +1,4 @@
+// Force restart
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -63,6 +64,10 @@ app.use('/api/rates', rateRoutes);
 // AI Routes
 import aiRoutes from './routes/ai.js';
 app.use('/api/ai', aiRoutes);
+
+// Recurring Routes
+import recurringRoutes from './routes/recurring.js';
+app.use('/api/recurring', recurringRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
