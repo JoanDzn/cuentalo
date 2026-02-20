@@ -136,13 +136,17 @@ export const aiController = {
                 generationConfig: { responseMimeType: "application/json" }
             };
 
-            const logFile = path.resolve(process.cwd(), 'logs', 'ai_debug.log');
-            if (!fs.existsSync(path.dirname(logFile))) fs.mkdirSync(path.dirname(logFile), { recursive: true });
-
+            const isVercel = process.env.VERCEL || process.env.NODE_ENV === 'production';
             const log = (msg) => {
-                const line = `[${new Date().toISOString()}] [PARSER] ${msg}\n`;
-                fs.appendFileSync(logFile, line);
-                console.log(line.trim());
+                const line = `[${new Date().toISOString()}] [PARSER] ${msg}`;
+                console.log(line);
+                if (!isVercel) {
+                    try {
+                        const logFile = path.resolve(process.cwd(), 'logs', 'ai_debug.log');
+                        if (!fs.existsSync(path.dirname(logFile))) fs.mkdirSync(path.dirname(logFile), { recursive: true });
+                        fs.appendFileSync(logFile, line + '\n');
+                    } catch (e) { }
+                }
             };
 
             log(`Transcript: "${transcript}"`);
@@ -206,13 +210,17 @@ export const aiController = {
                 generationConfig: { responseMimeType: "application/json" }
             };
 
-            const logFile = path.resolve(process.cwd(), 'logs', 'ai_debug.log');
-            if (!fs.existsSync(path.dirname(logFile))) fs.mkdirSync(path.dirname(logFile), { recursive: true });
-
+            const isVercel = process.env.VERCEL || process.env.NODE_ENV === 'production';
             const log = (msg) => {
-                const line = `[${new Date().toISOString()}] [IMAGE] ${msg}\n`;
-                fs.appendFileSync(logFile, line);
-                console.log(line.trim());
+                const line = `[${new Date().toISOString()}] [IMAGE] ${msg}`;
+                console.log(line);
+                if (!isVercel) {
+                    try {
+                        const logFile = path.resolve(process.cwd(), 'logs', 'ai_debug.log');
+                        if (!fs.existsSync(path.dirname(logFile))) fs.mkdirSync(path.dirname(logFile), { recursive: true });
+                        fs.appendFileSync(logFile, line + '\n');
+                    } catch (e) { }
+                }
             };
 
             log(`Analyzing image...`);
