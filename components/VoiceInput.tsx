@@ -289,8 +289,8 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture
-            style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
+            capture="environment"
+            style={{ position: 'fixed', top: '-100px', left: '-100px', width: '1px', height: '1px', opacity: 0 }}
             onChange={handleImageUpload}
           />
 
@@ -298,22 +298,27 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
             {/* Main button */}
             <motion.div
               drag
-              dragConstraints={{ left: -120, right: 120, top: -120, bottom: 50 }}
-              dragElastic={0.1}
+              dragConstraints={{ left: -100, right: 100, top: -150, bottom: 50 }}
+              dragElastic={0.15}
+              dragMomentum={false}
               dragSnapToOrigin
               style={{ x, y, scale: btnScale }}
               onDragStart={() => isDragging.current = true}
               onDragEnd={(_, info) => {
-                setTimeout(() => isDragging.current = false, 100);
                 const ox = info.offset.x;
                 const oy = info.offset.y;
-                if (oy < -40) startListening();
-                else if (ox > 40) setState('TYPING' as any);
-                else if (ox < -40) {
-                  if (fileInputRef.current) {
-                    fileInputRef.current.click();
-                  }
+
+                if (oy < -40) {
+                  startListening();
+                } else if (ox > 40) {
+                  setState('TYPING' as any);
+                } else if (ox < -40) {
+                  fileInputRef.current?.click();
                 }
+
+                setTimeout(() => {
+                  isDragging.current = false;
+                }, 100);
               }}
               onClick={() => {
                 if (!isDragging.current) startListening();

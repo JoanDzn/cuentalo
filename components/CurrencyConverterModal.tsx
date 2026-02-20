@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Copy, ChevronDown, Delete, ArrowRightLeft } from 'lucide-react';
+import { X, Copy, ChevronDown, Delete, ArrowRightLeft, Check } from 'lucide-react';
 import { useExchangeRates } from '../services/exchangeRateService';
 import { RateData } from '../types';
 
@@ -19,6 +19,7 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
     const [selectedRate, setSelectedRate] = useState<RateType>('bcv');
     const [result, setResult] = useState<number>(0);
     const [activeMenu, setActiveMenu] = useState<'currency' | 'rate' | null>(null);
+    const [copied, setCopied] = useState(false);
     const deleteTimer = useRef<NodeJS.Timeout | null>(null);
 
     // Auto-select rate when currency changes
@@ -99,6 +100,8 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
 
     const handleCopy = () => {
         navigator.clipboard.writeText(formatCurrency(result, getTargetCurrency()));
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     };
 
     const handleSwap = () => {
@@ -198,8 +201,8 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
                                                         setActiveMenu(null);
                                                     }}
                                                     className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${currency === c
-                                                            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#444]'
+                                                        ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#444]'
                                                         }`}
                                                 >
                                                     {c}
@@ -252,8 +255,8 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
                                                         (currency === 'USD' && rateOption.id === 'euro')
                                                     }
                                                     className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all uppercase flex justify-between items-center ${selectedRate === rateOption.id
-                                                            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#444]'
+                                                        ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#444]'
                                                         } ${(currency === 'EUR' && rateOption.id !== 'euro') || (currency === 'USD' && rateOption.id === 'euro') ? 'opacity-30' : ''}`}
                                                 >
                                                     <span>{rateOption.label}</span>
@@ -283,9 +286,34 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
                                     </span>
                                     <button
                                         onClick={handleCopy}
-                                        className="p-1.5 bg-gray-100 dark:bg-[#2C2C2C] rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 active:scale-95 transition-all"
+                                        className={`p-1.5 rounded-lg active:scale-95 transition-all flex items-center justify-center relative ${copied
+                                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                                                : 'bg-gray-100 dark:bg-[#2C2C2C] text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
+                                            }`}
                                     >
-                                        <Copy size={16} />
+                                        <AnimatePresence mode="wait">
+                                            {copied ? (
+                                                <motion.div
+                                                    key="check"
+                                                    initial={{ scale: 0, rotate: -45 }}
+                                                    animate={{ scale: 1, rotate: 0 }}
+                                                    exit={{ scale: 0, rotate: 45 }}
+                                                    transition={{ duration: 0.2 }}
+                                                >
+                                                    <Check size={16} />
+                                                </motion.div>
+                                            ) : (
+                                                <motion.div
+                                                    key="copy"
+                                                    initial={{ scale: 0 }}
+                                                    animate={{ scale: 1 }}
+                                                    exit={{ scale: 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                >
+                                                    <Copy size={16} />
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </button>
                                 </div>
                             </div>

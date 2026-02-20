@@ -38,13 +38,15 @@ export const aiController = {
             }
 
             const prompt = `
-                Extract financial data from: "${transcript}". Date: ${currentDate}.
+                Extrae datos financieros de: "${transcript}". Fecha: ${currentDate}. Contexto: Venezuela.
+                IMPORTANTE: Todo el texto generado (category y description) debe estar en ESPAÑOL.
                 Return strictly JSON with fields: amount(number), currency("USD"|"VES"), type("expense"|"income"), category, description, date, rate_type("bcv"|"euro"|"usdt"|null), is_invalid(boolean).
                 
                 Rules:
                 - Default currency: USD.
+                - Categorías sugeridas: "Alimentos", "Transporte", "Salud", "Hogar", "Ocio", "Sueldo", "Ventas", "Transferencia", "Ahorro".
                 - If "Bs", "Bolos", "Bolivares" -> currency: "VES", rate_type: "bcv".
-                - If context is "ahorre", "guarde", "save", "saving" -> type: "expense", category: "Ahorro". This represents moving money OUT of disposable income INTO savings.
+                - If context is "ahorre", "guarde", "save", "saving" -> type: "expense", category: "Ahorro".
                 - If context is "salary", "sueldo", "ingreso" -> type: "income".
             `;
 
@@ -122,20 +124,21 @@ export const aiController = {
             const cleanBase64 = image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
 
             const prompt = `
-                Analyze this image of a receipt, invoice, or financial document. Date context: ${currentDate}.
-                Extract the following fields and return strictly JSON:
+                Analiza esta imagen de un recibo, factura o documento financiero. Fecha: ${currentDate}. Contexto: Venezuela.
+                IMPORTANTE: Todos los campos de texto (category y description) deben estar estrictamente en ESPAÑOL.
+                Extrae los siguientes campos y devuelve estrictamente JSON:
                 - amount (number)
-                - currency ("USD" or "VES")
-                - type ("expense" or "income") -> Infer from context (e.g. "Payment", "Total" usually expense; "Salary", "Transfer received" income)
-                - category (string, short category name e.g. "Food", "Transport", "Health", "Salary", "Shopping")
-                - description (string, establishment name or brief content)
-                - date (string, YYYY-MM-DD format if found, otherwise null)
-                - rate_type (string, "bcv"|"euro"|"usdt"|null) -> If currency is VES, try to infer rate type or null.
+                - currency ("USD" o "VES")
+                - type ("expense" o "income") -> Inferir del contexto.
+                - category (string, nombre corto de categoría en ESPAÑOL e.g. "Alimentos", "Transporte", "Salud", "Sueldo", "Compras", "Hogar")
+                - description (string, nombre del establecimiento o contenido breve en ESPAÑOL)
+                - date (string, formato YYYY-MM-DD si se encuentra, de lo contrario null)
+                - rate_type (string, "bcv"|"euro"|"usdt"|null) -> Si la moneda es VES, intenta inferir el tipo o null.
                 
                 Rules:
-                - If ambiguous, assume "expense".
-                - If currency symbol is "Bs" or "Bolivares", use "VES".
-                - If currency is "$", use "USD".
+                - Si es ambiguo, asume "expense".
+                - Si el símbolo es "Bs" o "Bolívares", usa "VES".
+                - Si el símbolo es "$", usa "USD".
             `;
 
             let lastError;
