@@ -11,16 +11,19 @@ export const parseExpenseVoiceCommand = async (transcript: string): Promise<Expe
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // Add Authorization if needed, though voice commands might be public or protected?
-        // Usually protected. Let's add auth header if token exists.
         ...(localStorage.getItem('jwt_token') ? { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` } : {})
       },
       body: JSON.stringify({ transcript })
     });
 
+    if (response.status === 429) {
+      throw new Error("La IA está muy solicitada, espera unos segundos e intenta de nuevo.");
+    }
+
     if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.message || "Error procesando comando");
+      let errMsg = "Error procesando comando";
+      try { const err = await response.json(); errMsg = err.message || errMsg; } catch { }
+      throw new Error(errMsg);
     }
 
     const data = await response.json();

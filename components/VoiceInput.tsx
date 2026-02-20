@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, Loader2, Check, X, Keyboard, Camera, Sparkles, FileText, Edit2 } from 'lucide-react';
+import { Mic, Loader2, Check, X, Keyboard, Camera, Sparkles, FileText, Edit2, ZapOff } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { parseExpenseVoiceCommand, analyzeReceiptImage } from '../services/geminiService';
 import { AppState, ExpenseAnalysis } from '../types';
@@ -16,24 +16,23 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
   const [inputText, setInputText] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [analyzedData, setAnalyzedData] = useState<ExpenseAnalysis | null>(null);
-  const [showCameraConfirm, setShowCameraConfirm] = useState(false);
+
+  // Camera via getUserMedia
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const isDragging = useRef(false);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
-  // X-axis icon opacity (left=camera, right=keyboard)
   const leftOpacity = useTransform(x, [-70, -20], [1, 0]);
   const rightOpacity = useTransform(x, [20, 70], [0, 1]);
-  // Y-axis: dragging up shows mic
-  const upOpacity = useTransform(y, [-70, -20], [1, 0]);
-  // Center mic visible only when not dragging much
   const centerOpacity = useTransform(x, [-25, 0, 25], [0, 1, 0]);
-  // Scale up slightly when dragging up
   const btnScale = useTransform(y, [-80, 0], [1.25, 1]);
-  // Red glow when dragging up
   const bgColor = useTransform(y, [-80, -30, 0], ['#ef4444', '#f97316', '#000000']);
-  // Hint opacities — appear when dragging in their direction
   const upHintOpacity = useTransform(y, [-10, -50], [0, 1]);
   const leftHintOpacity = useTransform(x, [-10, -60], [0, 1]);
   const rightHintOpacity = useTransform(x, [10, 60], [0, 1]);
@@ -42,6 +41,104 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
   const processingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ─── Camera helpers ────────────────────────────────────────────────────────
+
+  const stopStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const openCamera = async () => {
+    setCameraError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setShowCamera(true);
+      // Attach stream to video element after render
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => { });
+        }
+      }, 80);
+    } catch (err: any) {
+      setCameraError('No se pudo acceder a la cámara');
+      console.error('Camera error:', err);
+    }
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+
+    const base64 = canvas.toDataURL('image/jpeg', 0.92);
+    stopStream();
+    setShowCamera(false);
+    processImage(base64);
+  };
+
+  const closeCamera = () => {
+    stopStream();
+    setShowCamera(false);
+    setCameraError('');
+  };
+
+  // Cleanup on unmount
+  useEffect(() => () => stopStream(), []);
+
+  // ─── Image processing ──────────────────────────────────────────────────────
+
+  const processImage = async (base64: string) => {
+    setState('PROCESSING' as any);
+    try {
+      const result = await analyzeReceiptImage(base64);
+      onExpenseAdded(result);
+      setState('SUCCESS' as any);
+      setTimeout(resetState, 1500);
+    } catch (e: any) {
+      setErrorMessage(e.message || 'No pude leer el recibo');
+      setState('ERROR' as any);
+      setTimeout(() => resetState(), 6000);
+    }
+  };
+
+  // Keep old file-input handler for fallback (desktop)
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setState('PROCESSING' as any);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const base64 = reader.result as string;
+        const result = await analyzeReceiptImage(base64);
+        onExpenseAdded(result);
+        setState('SUCCESS' as any);
+        setTimeout(resetState, 1500);
+      } catch (e: any) {
+        setErrorMessage(e.message || 'No pude leer el recibo');
+        setState('ERROR' as any);
+        setTimeout(() => resetState(), 6000);
+      }
+    };
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // ─── Voice recognition ─────────────────────────────────────────────────────
 
   const initializeRecognition = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -59,7 +156,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
     };
     recognition.onerror = (event: any) => {
       if (event.error === 'no-speech' || event.error === 'aborted') return;
-      setErrorMessage("No te entendí bien");
+      setErrorMessage('No te entendí bien');
       setState('ERROR' as any);
       setTimeout(() => resetState(), 2000);
     };
@@ -77,7 +174,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
       setState('LISTENING' as any);
       try { recognition.start(); } catch (e) { setState('ERROR' as any); }
     } else {
-      alert("Navegador no soporta voz");
+      alert('Navegador no soporta voz');
     }
   };
 
@@ -104,30 +201,6 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setState('PROCESSING' as any);
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        const base64 = reader.result as string;
-        const result = await analyzeReceiptImage(base64);
-        onExpenseAdded(result);
-        setState('SUCCESS' as any);
-        setTimeout(resetState, 1500);
-      } catch (e: any) {
-        setErrorMessage(e.message || "No pude leer el recibo");
-        setState('ERROR' as any);
-        setTimeout(() => resetState(), 6000);
-      }
-    };
-    reader.readAsDataURL(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
   const resetState = () => {
     setState('IDLE' as any);
     setTranscript('');
@@ -139,6 +212,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
 
   return (
     <>
+      {/* ── Main overlay (LISTENING / PROCESSING / SUCCESS / ERROR / TYPING) ── */}
       <AnimatePresence>
         {state !== 'IDLE' && (
           <motion.div
@@ -167,7 +241,6 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
                     {analyzedData.type === 'income' ? 'INGRESO' : 'GASTO'}
                   </div>
                 </div>
-
                 <div className="p-6 space-y-4">
                   <div className="flex items-start gap-4">
                     <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-xl">
@@ -176,30 +249,22 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
                     <div>
                       <p className="text-xs text-gray-500 uppercase font-bold">Concepto</p>
                       <p className="font-medium text-gray-900 dark:text-white text-lg leading-tight">
-                        {analyzedData.description || "Sin descripción"}
+                        {analyzedData.description || 'Sin descripción'}
                       </p>
                       <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mt-1">
                         {analyzedData.category}
                       </p>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <button
-                      onClick={() => {
-                        if (onRequestEdit) onRequestEdit(analyzedData);
-                        resetState();
-                      }}
+                      onClick={() => { if (onRequestEdit) onRequestEdit(analyzedData); resetState(); }}
                       className="py-3 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                     >
                       <Edit2 size={18} /> Editar
                     </button>
                     <button
-                      onClick={() => {
-                        onExpenseAdded(analyzedData);
-                        setState('SUCCESS' as any);
-                        setTimeout(resetState, 1500);
-                      }}
+                      onClick={() => { onExpenseAdded(analyzedData); setState('SUCCESS' as any); setTimeout(resetState, 1500); }}
                       className="py-3 px-4 rounded-xl bg-blue-600 text-white font-bold flex items-center justify-center gap-2 hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition"
                     >
                       <Check size={18} /> Guardar
@@ -220,7 +285,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
                   )}
                   {state === 'PROCESSING' && (
                     <div className="relative">
-                      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full" />
+                      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: 'linear' }} className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full" />
                       <div className="w-24 h-24 rounded-full flex items-center justify-center bg-white dark:bg-gray-800 shadow-xl z-10">
                         <Sparkles className="text-blue-500 animate-pulse" size={40} />
                       </div>
@@ -244,14 +309,14 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
                 </div>
 
                 <h2 className="text-xl font-bold uppercase tracking-widest text-gray-800 dark:text-gray-200 mb-2">
-                  {state === 'LISTENING' ? "Te escucho..." :
-                    state === 'PROCESSING' ? "Analizando..." :
-                      state === 'SUCCESS' ? "¡Listo!" :
-                        state === 'ERROR' ? "Error" : "Escribe"}
+                  {state === 'LISTENING' ? 'Te escucho...' :
+                    state === 'PROCESSING' ? 'Analizando...' :
+                      state === 'SUCCESS' ? '¡Listo!' :
+                        state === 'ERROR' ? 'Error' : 'Escribe'}
                 </h2>
 
                 <p className="text-gray-500 dark:text-gray-400 text-center max-w-xs h-6">
-                  {errorMessage || transcript || "..."}
+                  {errorMessage || transcript || '...'}
                 </p>
 
                 {(state === 'TYPING' as any) && (
@@ -266,10 +331,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
                     <button onClick={stopListening} className="px-6 py-2 bg-gray-200 dark:bg-gray-800 rounded-full font-bold text-sm">Pausar</button>
                     <button
                       onClick={() => {
-                        if (recognitionRef.current) {
-                          recognitionRef.current.onend = null;
-                          recognitionRef.current.abort();
-                        }
+                        if (recognitionRef.current) { recognitionRef.current.onend = null; recognitionRef.current.abort(); }
                         setState('TYPING' as any);
                       }}
                       className="px-6 py-2 border border-gray-300 dark:border-gray-700 rounded-full font-bold text-sm"
@@ -284,57 +346,59 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
         )}
       </AnimatePresence>
 
-      {/* Camera Confirmation Panel */}
+      {/* ── Camera UI (getUserMedia) ─────────────────────────────────────────── */}
       <AnimatePresence>
-        {showCameraConfirm && (
+        {showCamera && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-white/95 dark:bg-[#121212]/95 backdrop-blur-xl flex flex-col items-center justify-end pb-28 p-6 pointer-events-auto"
-            onClick={() => setShowCameraConfirm(false)}
+            className="fixed inset-0 z-[200] bg-black flex flex-col pointer-events-auto"
           >
-            <motion.div
-              initial={{ scale: 0.85, opacity: 0, y: 40 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ delay: 0.05, type: 'spring', stiffness: 280, damping: 24 }}
-              className="flex flex-col items-center gap-4 text-center"
-              onClick={e => e.stopPropagation()}
-            >
-              <div>
-                <h2 className="text-xl font-bold text-white mb-1">Escanear recibo</h2>
-                <p className="text-gray-300 text-sm">La IA extraerá los datos automáticamente.</p>
+            {/* Video preview */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+
+            {/* Hidden canvas for capture */}
+            <canvas ref={canvasRef} className="hidden" />
+
+            {/* Overlay controls */}
+            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+              {/* Top bar */}
+              <div className="flex justify-end p-5 pointer-events-auto">
+                <button
+                  onClick={closeCamera}
+                  className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white active:scale-95 transition-transform"
+                >
+                  <X size={22} />
+                </button>
               </div>
 
-              <label
-                htmlFor="camera-confirm-input"
-                className="w-20 h-20 bg-white text-black rounded-full flex items-center justify-center cursor-pointer active:scale-95 transition-transform touch-manipulation"
-              >
-                <Camera size={32} />
-              </label>
-              <input
-                id="camera-confirm-input"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="sr-only"
-                onChange={(e) => {
-                  setShowCameraConfirm(false);
-                  handleImageUpload(e);
-                }}
-              />
-
-              <button
-                onClick={() => setShowCameraConfirm(false)}
-                className="text-sm text-gray-400 hover:text-white transition-colors"
-              >
-                Cancelar
-              </button>
-            </motion.div>
+              {/* Bottom controls */}
+              <div className="flex flex-col items-center gap-3 pb-14 pointer-events-auto">
+                {cameraError && (
+                  <p className="text-red-400 text-sm bg-black/60 px-4 py-2 rounded-full">{cameraError}</p>
+                )}
+                {/* Shutter button */}
+                <button
+                  onClick={capturePhoto}
+                  className="w-20 h-20 rounded-full bg-white border-4 border-white/30 flex items-center justify-center active:scale-90 transition-transform shadow-xl"
+                >
+                  <div className="w-14 h-14 rounded-full bg-white" />
+                </button>
+                <p className="text-white/60 text-xs">Toca para capturar</p>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* ── IDLE mic button ─────────────────────────────────────────────────── */}
       {state === 'IDLE' && (
         <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center items-end pointer-events-none pb-2">
           <div className="relative flex flex-col items-center pointer-events-auto">
@@ -351,7 +415,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
                 const oy = info.offset.y;
                 if (oy < -40) startListening();
                 else if (ox > 40) setState('TYPING' as any);
-                else if (ox < -40) setShowCameraConfirm(true);
+                else if (ox < -40) openCamera();          // ← getUserMedia directo
                 setTimeout(() => { isDragging.current = false; }, 100);
               }}
               onClick={() => {
