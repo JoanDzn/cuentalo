@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Mail, Calendar, LogOut, UserCircle, Target, CreditCard, ChevronRight, TrendingUp, Edit2, Save, Globe, PiggyBank, Shield, Moon, Sun } from 'lucide-react';
+import { X, User, Mail, Calendar, LogOut, UserCircle, Target, CreditCard, ChevronRight, TrendingUp, Edit2, Save, Globe, PiggyBank, Shield, Moon, Sun, Calculator } from 'lucide-react';
 import { User as UserType, authService } from '../services/authService';
 
 interface ProfileDrawerProps {
@@ -12,12 +12,13 @@ interface ProfileDrawerProps {
   onSubscriptionsClick: () => void;
   onFixedIncomeClick: () => void;
   onRatesClick: () => void;
+  onCalculatorClick: () => void;
   onSavingsClick: () => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
 }
 
-const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, onLogout, onMissionsClick, onSubscriptionsClick, onFixedIncomeClick, onRatesClick, onSavingsClick, isDarkMode, toggleTheme }) => {
+const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, onLogout, onMissionsClick, onSubscriptionsClick, onFixedIncomeClick, onRatesClick, onCalculatorClick, onSavingsClick, isDarkMode, toggleTheme }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPhoto, setEditPhoto] = useState('');
@@ -213,6 +214,22 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
                         <div className="text-left flex-1">
                           <div className="font-bold text-gray-900 dark:text-white">Tasas de Cambio</div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">Dolar, Euro, USDT</div>
+                        </div>
+                        <div className="text-gray-300 dark:text-gray-600">
+                          <ChevronRight size={18} />
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => { onClose(); onCalculatorClick(); }}
+                        className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-white dark:bg-[#252525] border border-gray-100 dark:border-[#333] hover:bg-gray-50 dark:hover:bg-[#333] transition-all group"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <Calculator size={20} />
+                        </div>
+                        <div className="text-left flex-1">
+                          <div className="font-bold text-gray-900 dark:text-white">Calculadora</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Conversor de divisas</div>
                         </div>
                         <div className="text-gray-300 dark:text-gray-600">
                           <ChevronRight size={18} />

@@ -26,12 +26,12 @@ export const rateService = {
             const paraData = await paraRes.json();
             const euroData = await euroRes.json();
 
-            const bcvPrice = bcvData.promedio || 341.74; // Fallback should be updated if possible
+            const bcvPrice = bcvData.promedio || 396.37; // Updated fallback
 
             const rates = {
                 bcv: bcvPrice,
-                euro: euroData.promedio || (bcvPrice * 1.05), // Better fallback
-                usdt: paraData.promedio || (bcvPrice * 1.1),
+                euro: euroData.promedio || 470.28,
+                usdt: paraData.promedio || 538.00, // Using Parallel as proxy for USDT
                 updatedAt: new Date()
             };
 
@@ -41,9 +41,9 @@ export const rateService = {
             console.error('Error fetching exchange rates in backend:', error);
             // Return defaults if API is down
             return {
-                bcv: 341.74,
-                euro: 395.0,
-                usdt: 500.0,
+                bcv: 396.37,
+                euro: 470.28,
+                usdt: 538.00,
                 updatedAt: new Date(),
                 isFallback: true
             };

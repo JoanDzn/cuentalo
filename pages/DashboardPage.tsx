@@ -14,6 +14,7 @@ import { authService, User } from '../services/authService';
 import { dbService } from '../services/dbService';
 import { OnboardingTour } from '../components/OnboardingTour';
 import { normalizeToUSD } from '../utils/financeUtils';
+import CurrencyConverterModal from '../components/CurrencyConverterModal';
 
 // Tasas por defecto (Fallback)
 const DEFAULT_RATES: RateData = {
@@ -39,7 +40,9 @@ const DashboardPage: React.FC = () => {
   const [showMissions, setShowMissions] = useState(false);
   const [showSavings, setShowSavings] = useState(false);
   const [showSubscriptions, setShowSubscriptions] = useState(false);
+
   const [showRates, setShowRates] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
   const [subscriptionModalTab, setSubscriptionModalTab] = useState<'expense' | 'income'>('expense');
   const [user, setUser] = useState<User | null>(null);
 
@@ -463,10 +466,16 @@ const DashboardPage: React.FC = () => {
                 onFixedIncomeClick={() => { setSubscriptionModalTab('income'); setShowSubscriptions(true); }}
                 onMissionsClick={() => setShowMissions(true)}
                 onSavingsClick={() => setShowSavings(true)}
+                onCalculatorClick={() => setShowCalculator(true)}
               />
             </motion.div>
           )}
         </AnimatePresence>
+
+        <CurrencyConverterModal
+          isOpen={showCalculator}
+          onClose={() => setShowCalculator(false)}
+        />
 
         {/* Voice Interaction Layer */}
         <AnimatePresence>
@@ -478,7 +487,23 @@ const DashboardPage: React.FC = () => {
               transition={{ duration: 0.3 }}
               className="fixed inset-0 z-50 pointer-events-none"
             >
-              <VoiceInput onExpenseAdded={handleNewTransaction} onMissionsClick={() => setShowMissions(true)} />
+              <VoiceInput
+                onExpenseAdded={handleNewTransaction}
+                onMissionsClick={() => setShowMissions(true)}
+                onRequestEdit={(data) => {
+                  setCurrentTransaction({
+                    id: '',
+                    amount: data.amount,
+                    type: data.type,
+                    category: data.category || 'Otros',
+                    description: data.description || '',
+                    date: data.date || new Date().toISOString(),
+                    currency: data.currency || 'USD',
+                    rate_type: data.rate_type
+                  } as any);
+                  setIsEditing(true);
+                }}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -508,6 +533,7 @@ const DashboardPage: React.FC = () => {
           onFixedIncomeClick={() => { setSubscriptionModalTab('income'); setShowSubscriptions(true); }}
           onRatesClick={() => setShowRates(true)}
           onSavingsClick={() => setShowSavings(true)}
+          onCalculatorClick={() => setShowCalculator(true)}
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
         />

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Transaction, TransactionType, RateData } from '../types';
-import { ArrowLeftRight, ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard, List } from 'lucide-react';
+import { ArrowLeftRight, ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard, List, Calculator } from 'lucide-react';
 import TransactionListModal from './TransactionListModal';
 
 
@@ -16,6 +16,7 @@ interface DashboardProps {
     onFixedIncomeClick: () => void;
     onMissionsClick: () => void;
     onSavingsClick: () => void;
+    onCalculatorClick: () => void;
 }
 
 const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick, onSavingsClick }: { onExpenseClick: () => void, onIncomeClick: () => void, onMissionsClick: () => void, onSavingsClick: () => void }) => {
@@ -62,9 +63,9 @@ const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick, onSaving
     const current = slides[page];
 
     return (
-        <div id="recurring-carousel" className="w-[92%] mx-auto mb-2">
+        <div id="recurring-carousel" className="w-full">
             <div
-                className="bg-white dark:bg-[#111] rounded-[24px] px-4 pt-3 pb-4 md:py-5 relative shadow-lg cursor-pointer active:scale-95 transition-transform border border-gray-100 dark:border-white/5"
+                className="bg-white dark:bg-[#111] rounded-[24px] pl-4 pr-2 pt-3 pb-4 md:py-5 relative shadow-lg cursor-pointer active:scale-95 transition-transform border border-gray-100 dark:border-white/5"
             >
                 {/* Click Zones */}
                 <div className="absolute inset-0 z-10 flex">
@@ -89,12 +90,12 @@ const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick, onSaving
                             <button
                                 key={i}
                                 onClick={(e) => { e.stopPropagation(); setPage(i); }}
-                                className={`h-1 rounded-full transition-all duration-300 ${page === i ? 'bg-gray-900 dark:bg-white w-4' : 'bg-gray-200 dark:bg-gray-700 w-1'}`}
+                                className={`h-1 rounded-full transition-all duration-300 ${page === i ? 'bg-gray-900 dark:bg-white w-4 opacity-80' : 'bg-gray-200 dark:bg-gray-700 w-1'}`}
                             />
                         ))}
                     </div>
 
-                    <div className="p-1">
+                    <div className="pr-1">
                         <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
                     </div>
                 </div>
@@ -137,7 +138,7 @@ const formatDate = (dateStep: string) => {
     return `${day}/${month}/${year}`;
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onSubscriptionsClick, onFixedIncomeClick, onMissionsClick, onSavingsClick }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onSubscriptionsClick, onFixedIncomeClick, onMissionsClick, onSavingsClick, onCalculatorClick }) => {
     const [viewMode, setViewMode] = useState<'recent' | 'history'>('recent');
     const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
     const [showAllRates, setShowAllRates] = useState(false);
@@ -360,12 +361,23 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                     </button>
                                 </div>
 
-                                <RecurringCTA
-                                    onExpenseClick={onSubscriptionsClick}
-                                    onIncomeClick={onFixedIncomeClick}
-                                    onMissionsClick={onMissionsClick}
-                                    onSavingsClick={onSavingsClick}
-                                />
+                                <div className="w-full px-1 flex gap-2 mb-2">
+                                    <div className="flex-1">
+                                        <RecurringCTA
+                                            onExpenseClick={onSubscriptionsClick}
+                                            onIncomeClick={onFixedIncomeClick}
+                                            onMissionsClick={onMissionsClick}
+                                            onSavingsClick={onSavingsClick}
+                                        />
+                                    </div>
+                                    <button
+                                        id="calculator-shortcut"
+                                        onClick={onCalculatorClick}
+                                        className="w-16 bg-white dark:bg-[#111] rounded-[24px] shadow-lg border border-gray-100 dark:border-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-all active:scale-95 shrink-0"
+                                    >
+                                        <Calculator size={24} />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Transactions Header - Clickable for Full Menu */}
@@ -560,6 +572,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                 type={modalType}
                 title={modalType === 'income' ? 'Ingresos' : modalType === 'expense' ? 'Gastos' : 'Movimientos'}
                 onEditTransaction={onEditTransaction}
+                rates={rates}
             />
         </>
     );

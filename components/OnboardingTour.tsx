@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, X, User, Sparkles, DollarSign, Calendar, Zap, List, Moon, Mic } from 'lucide-react';
+import { ChevronRight, X, User, Sparkles, DollarSign, Calendar, Zap, List, Moon, Mic, Calculator } from 'lucide-react';
 
 interface OnboardingTourProps {
     isActive: boolean;
@@ -40,6 +40,14 @@ const STEPS = [
         position: 'top',
         icon: <Zap size={32} />,
         color: 'text-amber-500 bg-amber-50 dark:bg-amber-900/20'
+    },
+    {
+        target: 'calculator-shortcut',
+        title: 'Calculadora',
+        content: () => 'Realiza conversiones rápidas entre divisas y cálculos matemáticos sin salir de la app.',
+        position: 'bottom',
+        icon: <Calculator size={32} />,
+        color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
     },
     {
         target: 'recent-transactions-section',

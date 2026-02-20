@@ -14,4 +14,14 @@ router.post('/parse', async (req, res) => {
     }
 });
 
+// POST /api/ai/analyze-image
+router.post('/analyze-image', async (req, res) => {
+    try {
+        await aiController.analyzeImage(req, res);
+    } catch (error) {
+        console.error("Route Error /api/ai/analyze-image:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
 export default router;

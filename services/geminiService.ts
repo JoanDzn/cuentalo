@@ -1,3 +1,4 @@
+
 import { ExpenseAnalysis } from "../types";
 
 // Backend API URL
@@ -28,5 +29,30 @@ export const parseExpenseVoiceCommand = async (transcript: string): Promise<Expe
   } catch (error: any) {
     console.error("AI Service Error:", error);
     throw new Error(error.message || "No se pudo conectar con el servidor de IA.");
+  }
+};
+
+export const analyzeReceiptImage = async (imageBase64: string): Promise<ExpenseAnalysis> => {
+  try {
+    const response = await fetch(`${API_URL}/ai/analyze-image`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(localStorage.getItem('jwt_token') ? { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` } : {})
+      },
+      body: JSON.stringify({ image: imageBase64 })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.message || "Error analizando imagen");
+    }
+
+    const data = await response.json();
+    return data as ExpenseAnalysis;
+
+  } catch (error: any) {
+    console.error("AI Image Analysis Error:", error);
+    throw new Error(error.message || "No se pudo analizar la imagen.");
   }
 };
