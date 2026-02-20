@@ -52,24 +52,36 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
   };
 
   const openCamera = async () => {
+    console.log("[Camera] openCamera called");
     setCameraError('');
+    setShowCamera(true); // Open UI first so user sees "black" or loading state
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       });
       streamRef.current = stream;
-      setShowCamera(true);
+
       // Attach stream to video element after render
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => { });
+          videoRef.current.play().catch((e) => {
+            console.error("Video play error:", e);
+            setCameraError('Error al reproducir video');
+          });
         }
-      }, 80);
+      }, 150);
     } catch (err: any) {
-      setCameraError('No se pudo acceder a la cámara');
       console.error('Camera error:', err);
+      if (err.name === 'NotAllowedError') {
+        setCameraError('Permiso de cámara denegado');
+      } else if (err.name === 'NotFoundError') {
+        setCameraError('No se encontró ninguna cámara');
+      } else {
+        setCameraError('No se pudo acceder a la cámara');
+      }
     }
   };
 
@@ -353,8 +365,17 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black flex flex-col pointer-events-auto"
+            className="fixed inset-0 z-[200] bg-black flex flex-col justify-between pointer-events-auto overflow-hidden"
           >
+            {/* Full-screen Video Background */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="absolute inset-0 w-full h-full object-cover z-0"
+            />
+
             {/* Gallery Input (Hidden) */}
             <input
               type="file"
@@ -367,60 +388,55 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
               }}
             />
 
-            {/* Video preview */}
-            <div className="flex-1 relative overflow-hidden">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
+            {/* Top Bar - Overlays Video */}
+            <div className="h-24 bg-[#F5F5F5]/60 dark:bg-[#121212]/60 backdrop-blur-md flex items-end justify-end px-6 pb-4 z-10 border-b border-black/5 dark:border-white/5">
+              <button
+                onClick={closeCamera}
+                className="p-2 rounded-full bg-white/20 dark:bg-white/10 text-gray-800 dark:text-white active:scale-95 transition-transform shadow-sm backdrop-blur-sm border border-white/20"
+              >
+                <X size={24} />
+              </button>
+            </div>
 
-              {/* Close button (Top) */}
-              <div className="absolute top-0 left-0 right-0 p-5 flex justify-end pointer-events-none">
+            {/* Camera Viewport - Clear 4:3 Area */}
+            <div className="w-full relative aspect-[3/4] z-10 pointer-events-none">
+              {/* This area is empty to show the video behind it clearly */}
+            </div>
+
+            {/* Bottom Bar - Overlays Video */}
+            <div className="flex-1 bg-[#F5F5F5]/70 dark:bg-[#121212]/70 backdrop-blur-lg flex flex-col justify-center pb-8 pt-4 z-10 border-t border-black/5 dark:border-white/5">
+              <div className="flex items-center justify-around px-8 pointer-events-auto">
+                {/* Gallery Preview Button */}
                 <button
-                  onClick={closeCamera}
-                  className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform pointer-events-auto"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-14 h-14 rounded-xl bg-white/20 dark:bg-white/5 border border-white/30 dark:border-white/10 overflow-hidden flex items-center justify-center active:scale-95 transition-transform shadow-lg backdrop-blur-sm"
                 >
-                  <X size={20} />
+                  <ImageIcon size={28} className="text-gray-700 dark:text-white/80" />
                 </button>
+
+                {/* Apple-style Shutter Button */}
+                <button
+                  onClick={capturePhoto}
+                  className="w-20 h-20 rounded-full border-4 border-gray-400 dark:border-white flex items-center justify-center active:scale-95 transition-all shadow-xl"
+                >
+                  <div className="w-16 h-16 rounded-full bg-gray-600 dark:bg-white transition-transform active:scale-90" />
+                </button>
+
+                {/* Spacer for balance */}
+                <div className="w-14 h-14" />
               </div>
             </div>
 
             {/* Hidden canvas for capture */}
             <canvas ref={canvasRef} className="hidden" />
 
-            {/* Bottom controls bar - Solid Black */}
-            <div className="bg-black px-8 py-10 flex items-center justify-between pointer-events-auto border-t border-white/5">
-              {/* Gallery Button */}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-12 h-12 flex items-center justify-center text-white active:scale-90 transition-transform"
-              >
-                <div className="p-2 border-2 border-white/20 rounded-lg">
-                  <ImageIcon size={24} />
-                </div>
-              </button>
-
-              {/* Shutter button - Match provided design */}
-              <div className="relative flex items-center justify-center">
-                <button
-                  onClick={capturePhoto}
-                  className="w-20 h-20 rounded-full border-[3px] border-white flex items-center justify-center active:scale-95 transition-transform"
-                >
-                  <div className="w-[85%] h-[85%] rounded-full bg-white" />
-                </button>
-              </div>
-
-              {/* Spacer for symmetry (or camera icon from image if desired, but user said 'voltear camara olvidado') */}
-              <div className="w-12 h-12" />
-            </div>
-
-            {/* Camera error message overlay */}
+            {/* Error Overlay */}
             {cameraError && (
-              <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 flex justify-center p-4">
-                <p className="text-red-400 text-sm bg-black/80 px-4 py-2 rounded-full border border-red-900/50">{cameraError}</p>
+              <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 flex justify-center p-4 z-50">
+                <p className="text-red-500 dark:text-red-400 text-sm bg-white/90 dark:bg-black/90 px-6 py-3 rounded-full border border-red-500/30 flex items-center gap-2 shadow-xl backdrop-blur-md">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  {cameraError}
+                </p>
               </div>
             )}
           </motion.div>
@@ -429,7 +445,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
 
       {/* ── IDLE mic button ─────────────────────────────────────────────────── */}
       {state === 'IDLE' && (
-        <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center items-end pointer-events-none pb-2">
+        <div className="fixed bottom-6 left-0 right-0 z-[60] flex justify-center items-end pointer-events-none pb-2">
           <div className="relative flex flex-col items-center pointer-events-auto">
             <motion.div
               drag
@@ -442,16 +458,16 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
               onDragEnd={(_, info) => {
                 const ox = info.offset.x;
                 const oy = info.offset.y;
-                if (oy < -40) startListening();
-                else if (ox > 40) setState('TYPING' as any);
-                else if (ox < -40) openCamera();          // ← getUserMedia directo
+                if (oy < -30) startListening();
+                else if (ox > 30) setState('TYPING' as any);
+                else if (ox < -30) openCamera();          // ← getUserMedia directo
                 setTimeout(() => { isDragging.current = false; }, 100);
               }}
               onClick={() => {
                 if (!isDragging.current) startListening();
               }}
               id="voice-input-btn"
-              className="w-16 h-16 bg-black dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-50"
+              className="w-16 h-16 bg-black dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-50 pointer-events-auto shadow-2xl"
             >
               <div className="relative w-full h-full flex items-center justify-center">
                 <motion.div style={{ opacity: centerOpacity, position: 'absolute' }}><Mic size={28} /></motion.div>

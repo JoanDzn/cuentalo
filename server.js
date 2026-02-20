@@ -9,8 +9,8 @@ const PORT = process.env.PORT || 3001;
 // Connect to DB before listening
 connectDB().then(() => {
     app.listen(PORT, () => {
-        console.log(`Backend Server running on http://localhost:${PORT}`);
-        console.log('Server restarted successfully');
+        console.log(`Backend Server running on http://localhost:${PORT} [RESTART]`);
+        console.log('Server stabilized');
     });
 }).catch(err => {
     console.error("Failed to connect to DB", err);

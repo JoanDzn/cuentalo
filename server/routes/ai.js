@@ -24,4 +24,36 @@ router.post('/analyze-image', async (req, res) => {
     }
 });
 
+// Output list of available models for debugging
+router.get('/models', async (req, res) => {
+    try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) return res.status(500).json({ error: "No API Key" });
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        const data = await response.json();
+
+        if (data.models) {
+            res.json(data.models.map(m => m.name.replace('models/', '')));
+        } else {
+            res.status(500).json(data);
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/test', (req, res) => {
+    res.json({
+        status: "ok",
+        version: "2.0",
+        time: new Date(),
+        env: {
+            hasKey1: !!process.env.GEMINI_API_KEY,
+            hasKey2: !!process.env.GEMINI_API_KEY_2,
+            apiUrl: process.env.VITE_API_URL
+        }
+    });
+});
+
 export default router;

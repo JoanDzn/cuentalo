@@ -17,12 +17,17 @@ export const parseExpenseVoiceCommand = async (transcript: string): Promise<Expe
     });
 
     if (response.status === 429) {
-      throw new Error("La IA está muy solicitada, espera unos segundos e intenta de nuevo.");
+      let errMsg = "La IA está muy solicitada, espera unos segundos e intenta de nuevo.";
+      try { const err = await response.json(); if (err.message) errMsg = err.message; } catch { }
+      throw new Error(errMsg);
     }
 
     if (!response.ok) {
-      let errMsg = "Error procesando comando";
-      try { const err = await response.json(); errMsg = err.message || errMsg; } catch { }
+      let errMsg = `Error del servidor (${response.status})`;
+      try {
+        const err = await response.json();
+        if (err.message) errMsg = err.message;
+      } catch { }
       throw new Error(errMsg);
     }
 
@@ -47,8 +52,12 @@ export const analyzeReceiptImage = async (imageBase64: string): Promise<ExpenseA
     });
 
     if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.message || "Error analizando imagen");
+      let errMsg = `Error de imagen (${response.status})`;
+      try {
+        const err = await response.json();
+        if (err.message) errMsg = err.message;
+      } catch { }
+      throw new Error(errMsg);
     }
 
     const data = await response.json();
