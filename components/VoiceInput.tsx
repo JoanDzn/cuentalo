@@ -80,7 +80,13 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
     }
   };
 
-  const stopListening = () => recognitionRef.current?.stop();
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.onend = null;
+      recognitionRef.current.abort();
+    }
+    resetState();
+  };
 
   const processValues = async (text: string, source: 'voice' | 'text') => {
     processingRef.current = true;
@@ -257,7 +263,18 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
                 {state === 'LISTENING' && (
                   <div className="mt-8 flex gap-4">
                     <button onClick={stopListening} className="px-6 py-2 bg-gray-200 dark:bg-gray-800 rounded-full font-bold text-sm">Pausar</button>
-                    <button onClick={() => setState('TYPING' as any)} className="px-6 py-2 border border-gray-300 dark:border-gray-700 rounded-full font-bold text-sm">Teclado</button>
+                    <button
+                      onClick={() => {
+                        if (recognitionRef.current) {
+                          recognitionRef.current.onend = null;
+                          recognitionRef.current.abort();
+                        }
+                        setState('TYPING' as any);
+                      }}
+                      className="px-6 py-2 border border-gray-300 dark:border-gray-700 rounded-full font-bold text-sm"
+                    >
+                      Teclado
+                    </button>
                   </div>
                 )}
               </div>
@@ -268,14 +285,21 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
 
       {state === 'IDLE' && (
         <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center items-end pointer-events-none pb-2">
-          <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageUpload} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture
+            style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
+            onChange={handleImageUpload}
+          />
 
           <div className="relative flex flex-col items-center pointer-events-auto">
             {/* Main button */}
             <motion.div
               drag
-              dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-              dragElastic={0.25}
+              dragConstraints={{ left: -120, right: 120, top: -120, bottom: 50 }}
+              dragElastic={0.1}
               dragSnapToOrigin
               style={{ x, y, scale: btnScale }}
               onDragStart={() => isDragging.current = true}
@@ -283,9 +307,13 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
                 setTimeout(() => isDragging.current = false, 100);
                 const ox = info.offset.x;
                 const oy = info.offset.y;
-                if (oy < -50) startListening();
-                else if (ox > 50) setState('TYPING' as any);
-                else if (ox < -50) fileInputRef.current?.click();
+                if (oy < -40) startListening();
+                else if (ox > 40) setState('TYPING' as any);
+                else if (ox < -40) {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.click();
+                  }
+                }
               }}
               onClick={() => {
                 if (!isDragging.current) startListening();

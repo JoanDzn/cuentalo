@@ -52,6 +52,7 @@ const DashboardPage: React.FC = () => {
   });
   const [rates, setRates] = useState<RateData>(DEFAULT_RATES);
   const [isLoadingRate, setIsLoadingRate] = useState<boolean>(true);
+  const [dataLoading, setDataLoading] = useState<boolean>(true);
   const [showTour, setShowTour] = useState(false);
 
   // Check Onboarding Status
@@ -96,6 +97,8 @@ const DashboardPage: React.FC = () => {
           }
         } catch (e) {
           console.error("Error loading user data:", e);
+        } finally {
+          setDataLoading(false);
         }
       }
     });
@@ -467,6 +470,7 @@ const DashboardPage: React.FC = () => {
                 onMissionsClick={() => setShowMissions(true)}
                 onSavingsClick={() => setShowSavings(true)}
                 onCalculatorClick={() => setShowCalculator(true)}
+                loading={dataLoading}
               />
             </motion.div>
           )}

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Transaction, TransactionType, RateData } from '../types';
-import { ArrowLeftRight, ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard, List, Calculator } from 'lucide-react';
+import { ArrowLeftRight, ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard, List, Calculator, Loader2 } from 'lucide-react';
 import TransactionListModal from './TransactionListModal';
 
 
@@ -17,6 +17,7 @@ interface DashboardProps {
     onMissionsClick: () => void;
     onSavingsClick: () => void;
     onCalculatorClick: () => void;
+    loading?: boolean;
 }
 
 const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick, onSavingsClick }: { onExpenseClick: () => void, onIncomeClick: () => void, onMissionsClick: () => void, onSavingsClick: () => void }) => {
@@ -138,7 +139,7 @@ const formatDate = (dateStep: string) => {
     return `${day}/${month}/${year}`;
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onSubscriptionsClick, onFixedIncomeClick, onMissionsClick, onSavingsClick, onCalculatorClick }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onSubscriptionsClick, onFixedIncomeClick, onMissionsClick, onSavingsClick, onCalculatorClick, loading = false }) => {
     const [viewMode, setViewMode] = useState<'recent' | 'history'>('recent');
     const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
     const [showAllRates, setShowAllRates] = useState(false);
@@ -393,7 +394,28 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
 
                             {/* Transactions List (Inline - Flow) */}
                             <div className="pt-2 pb-8 px-2">
-                                {sortedTransactions.length === 0 ? (
+                                {loading ? (
+                                    <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-70">
+                                        <div className="flex gap-1.5">
+                                            <motion.div
+                                                animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
+                                                transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                                                className="w-2.5 h-2.5 bg-gray-900 dark:bg-white rounded-full"
+                                            />
+                                            <motion.div
+                                                animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
+                                                transition={{ duration: 1, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+                                                className="w-2.5 h-2.5 bg-gray-900 dark:bg-white rounded-full"
+                                            />
+                                            <motion.div
+                                                animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
+                                                transition={{ duration: 1, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+                                                className="w-2.5 h-2.5 bg-gray-900 dark:bg-white rounded-full"
+                                            />
+                                        </div>
+                                        <p className="text-sm font-bold text-gray-400 dark:text-gray-500 tracking-wide">Cargando movimientos</p>
+                                    </div>
+                                ) : sortedTransactions.length === 0 ? (
                                     <div className="text-center py-10 opacity-50">
                                         <div className="mx-auto w-16 h-16 bg-gray-200 dark:bg-[#1E1E1E] rounded-full flex items-center justify-center text-gray-400 mb-4">
                                             <DollarSign size={24} />
