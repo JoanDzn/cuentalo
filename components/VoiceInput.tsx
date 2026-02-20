@@ -16,6 +16,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
   const [inputText, setInputText] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [analyzedData, setAnalyzedData] = useState<ExpenseAnalysis | null>(null);
+  const [showCameraConfirm, setShowCameraConfirm] = useState(false);
 
   const isDragging = useRef(false);
   const x = useMotionValue(0);
@@ -283,28 +284,60 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
         )}
       </AnimatePresence>
 
+      {/* Camera Confirmation Panel */}
+      <AnimatePresence>
+        {showCameraConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-white/95 dark:bg-[#121212]/95 backdrop-blur-xl flex flex-col items-center justify-end pb-28 p-6 pointer-events-auto"
+            onClick={() => setShowCameraConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 40 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ delay: 0.05, type: 'spring', stiffness: 280, damping: 24 }}
+              className="flex flex-col items-center gap-4 text-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <div>
+                <h2 className="text-xl font-bold text-white mb-1">Escanear recibo</h2>
+                <p className="text-gray-300 text-sm">La IA extraerá los datos automáticamente.</p>
+              </div>
+
+              <label
+                htmlFor="camera-confirm-input"
+                className="w-20 h-20 bg-white text-black rounded-full flex items-center justify-center cursor-pointer active:scale-95 transition-transform touch-manipulation"
+              >
+                <Camera size={32} />
+              </label>
+              <input
+                id="camera-confirm-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="sr-only"
+                onChange={(e) => {
+                  setShowCameraConfirm(false);
+                  handleImageUpload(e);
+                }}
+              />
+
+              <button
+                onClick={() => setShowCameraConfirm(false)}
+                className="text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {state === 'IDLE' && (
         <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center items-end pointer-events-none pb-2">
-
-          <div className="flex items-center gap-5 pointer-events-auto">
-
-            {/* Camera Button — label for native iOS file picker */}
-            <label
-              htmlFor="camera-file-input"
-              className="w-12 h-12 bg-black/60 dark:bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full shadow-xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform touch-manipulation select-none"
-            >
-              <Camera size={20} />
-            </label>
-            <input
-              id="camera-file-input"
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="sr-only"
-              onChange={handleImageUpload}
-            />
-
-            {/* Main Mic Button */}
+          <div className="relative flex flex-col items-center pointer-events-auto">
             <motion.div
               drag
               dragConstraints={{ left: -100, right: 100, top: -150, bottom: 50 }}
@@ -318,26 +351,21 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
                 const oy = info.offset.y;
                 if (oy < -40) startListening();
                 else if (ox > 40) setState('TYPING' as any);
+                else if (ox < -40) setShowCameraConfirm(true);
                 setTimeout(() => { isDragging.current = false; }, 100);
               }}
               onClick={() => {
                 if (!isDragging.current) startListening();
               }}
-              className="w-16 h-16 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-2xl flex items-center justify-center cursor-grab active:cursor-grabbing z-50"
+              id="voice-input-btn"
+              className="w-16 h-16 bg-black dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-50"
             >
               <div className="relative w-full h-full flex items-center justify-center">
                 <motion.div style={{ opacity: centerOpacity, position: 'absolute' }}><Mic size={28} /></motion.div>
                 <motion.div style={{ opacity: rightOpacity, position: 'absolute' }}><Keyboard size={28} /></motion.div>
+                <motion.div style={{ opacity: leftOpacity, position: 'absolute' }}><Camera size={28} /></motion.div>
               </div>
             </motion.div>
-
-            {/* Keyboard Button */}
-            <button
-              onClick={() => setState('TYPING' as any)}
-              className="w-12 h-12 bg-black/60 dark:bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full shadow-xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform touch-manipulation select-none"
-            >
-              <Keyboard size={20} />
-            </button>
           </div>
         </div>
       )}

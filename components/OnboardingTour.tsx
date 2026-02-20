@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, X, User, Sparkles, DollarSign, Calendar, Zap, List, Moon, Mic, Calculator } from 'lucide-react';
+import { ChevronRight, X, User, Sparkles, DollarSign, Calendar, Zap, List, Moon, Mic, Calculator, Camera } from 'lucide-react';
 
 interface OnboardingTourProps {
     isActive: boolean;
@@ -68,10 +68,18 @@ const STEPS = [
     {
         target: 'voice-input-btn',
         title: 'Habla o Escribe',
-        content: () => 'Presiona para hablar o desliza el botón hacia la derecha para escribir tus gastos manualmente.',
+        content: () => '¡El centro de mando! Toca para hablar, desliza ➡ para escribir, desliza ⬆ para activar el micrófono.',
         position: 'top',
         icon: <Mic size={32} />,
         color: 'text-red-500 bg-red-50 dark:bg-red-900/20'
+    },
+    {
+        target: 'voice-input-btn',
+        title: 'Escanear Recibo',
+        content: () => 'Desliza el botón ⬅ hacia la izquierda para abrir la cámara y escanear un recibo. La IA lo analiza automáticamente.',
+        position: 'top',
+        icon: <Camera size={32} />,
+        color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
     }
 ];
 
@@ -105,6 +113,8 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isActive, onComp
                     bottom: rect.bottom + padding,
                     left: rect.left - padding,
                 } as DOMRect);
+            } else {
+                setTargetRect(null);
             }
         };
 
@@ -214,46 +224,53 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({ isActive, onComp
 
             {/* Floating Tooltip for Targeted Steps */}
             <AnimatePresence mode="wait">
-                {targetRect && (
-                    <motion.div
-                        key="floating-tooltip"
-                        initial={{ opacity: 0, y: 10, x: window.innerWidth < 768 ? 0 : "-50%" }}
-                        animate={{ opacity: 1, y: 0, x: window.innerWidth < 768 ? 0 : "-50%" }}
-                        exit={{ opacity: 0, y: -10, x: window.innerWidth < 768 ? 0 : "-50%" }}
-                        transition={{ duration: 0.3 }}
-                        style={{
-                            position: 'fixed',
-                            ...(window.innerWidth < 768 ? {
-                                // Mobile: Always center horizontally, position based on top/bottom availability
-                                left: '5%',
-                                right: '5%',
-                                width: '90%',
-                                top: step.position === 'bottom' ? targetRect.bottom + 20 : 'auto',
-                                bottom: step.position === 'top' ? (window.innerHeight - targetRect.top) + 20 : 'auto',
-                            } : {
-                                // Desktop: Use precise coordinates
-                                top: step.position === 'bottom' ? targetRect.bottom + 20 : Math.max(20, targetRect.top - 200),
-                                left: targetRect.left + (targetRect.width / 2),
-                                // Transform is handled by motion x prop
-                                width: '380px'
-                            })
-                        }}
-                        className="pointer-events-auto bg-white dark:bg-[#1E1E1E] p-6 rounded-3xl shadow-2xl border border-gray-100 dark:border-[#333] relative overflow-hidden"
-                    >
-                        <TourContent
-                            step={step}
-                            currentStep={currentStep}
-                            totalSteps={STEPS.length}
-                            onNext={handleNext}
-                            onSkip={handleSkip}
-                            userName={userName}
-                            isLastStep={isLastStep}
-                        />
+                {targetRect && (() => {
+                    const screenH = window.innerHeight;
+                    const screenW = window.innerWidth;
+                    const TOOLTIP_H = 220;
+                    const TOOLTIP_W = Math.min(screenW * 0.9, 380);
+                    const GAP = 16;
 
-                        {/* Desktop Arrow (Hidden on mobile for simplicity) */}
-                        <div className="hidden md:block absolute left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-[#1E1E1E] rotate-45 border-l border-t border-gray-100 dark:border-[#333] -top-2" />
-                    </motion.div>
-                )}
+                    // Decide vertical position: prefer below, fallback above
+                    let top: number | undefined;
+                    let bottom: number | undefined;
+                    if (targetRect.bottom + GAP + TOOLTIP_H < screenH) {
+                        top = targetRect.bottom + GAP;
+                    } else {
+                        bottom = screenH - targetRect.top + GAP;
+                    }
+
+                    // Center horizontally on target, clamped within screen
+                    let leftVal = targetRect.left + targetRect.width / 2 - TOOLTIP_W / 2;
+                    leftVal = Math.max(8, Math.min(leftVal, screenW - TOOLTIP_W - 8));
+
+                    return (
+                        <motion.div
+                            key={`tooltip-${currentStep}`}
+                            initial={{ opacity: 0, y: top !== undefined ? 8 : -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: top !== undefined ? -8 : 8 }}
+                            transition={{ duration: 0.25 }}
+                            style={{
+                                position: 'fixed',
+                                left: leftVal,
+                                width: TOOLTIP_W,
+                                ...(top !== undefined ? { top } : { bottom }),
+                            }}
+                            className="pointer-events-auto bg-white dark:bg-[#1E1E1E] p-6 rounded-3xl shadow-2xl border border-gray-100 dark:border-[#333] relative overflow-hidden"
+                        >
+                            <TourContent
+                                step={step}
+                                currentStep={currentStep}
+                                totalSteps={STEPS.length}
+                                onNext={handleNext}
+                                onSkip={handleSkip}
+                                userName={userName}
+                                isLastStep={isLastStep}
+                            />
+                        </motion.div>
+                    );
+                })()}
             </AnimatePresence>
         </div>
     );

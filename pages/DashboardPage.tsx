@@ -540,6 +540,7 @@ const DashboardPage: React.FC = () => {
           onCalculatorClick={() => setShowCalculator(true)}
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
+          onHelpClick={() => setShowTour(true)}
         />
 
         <SubscriptionsModal
