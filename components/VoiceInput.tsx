@@ -285,17 +285,26 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
 
       {state === 'IDLE' && (
         <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center items-end pointer-events-none pb-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            style={{ position: 'fixed', top: '-100px', left: '-100px', width: '1px', height: '1px', opacity: 0 }}
-            onChange={handleImageUpload}
-          />
 
-          <div className="relative flex flex-col items-center pointer-events-auto">
-            {/* Main button */}
+          <div className="flex items-center gap-5 pointer-events-auto">
+
+            {/* Camera Button — label for native iOS file picker */}
+            <label
+              htmlFor="camera-file-input"
+              className="w-12 h-12 bg-black/60 dark:bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full shadow-xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform touch-manipulation select-none"
+            >
+              <Camera size={20} />
+            </label>
+            <input
+              id="camera-file-input"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              onChange={handleImageUpload}
+            />
+
+            {/* Main Mic Button */}
             <motion.div
               drag
               dragConstraints={{ left: -100, right: 100, top: -150, bottom: 50 }}
@@ -307,18 +316,9 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
               onDragEnd={(_, info) => {
                 const ox = info.offset.x;
                 const oy = info.offset.y;
-
-                if (oy < -40) {
-                  startListening();
-                } else if (ox > 40) {
-                  setState('TYPING' as any);
-                } else if (ox < -40) {
-                  fileInputRef.current?.click();
-                }
-
-                setTimeout(() => {
-                  isDragging.current = false;
-                }, 100);
+                if (oy < -40) startListening();
+                else if (ox > 40) setState('TYPING' as any);
+                setTimeout(() => { isDragging.current = false; }, 100);
               }}
               onClick={() => {
                 if (!isDragging.current) startListening();
@@ -328,9 +328,16 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
               <div className="relative w-full h-full flex items-center justify-center">
                 <motion.div style={{ opacity: centerOpacity, position: 'absolute' }}><Mic size={28} /></motion.div>
                 <motion.div style={{ opacity: rightOpacity, position: 'absolute' }}><Keyboard size={28} /></motion.div>
-                <motion.div style={{ opacity: leftOpacity, position: 'absolute' }}><Camera size={28} /></motion.div>
               </div>
             </motion.div>
+
+            {/* Keyboard Button */}
+            <button
+              onClick={() => setState('TYPING' as any)}
+              className="w-12 h-12 bg-black/60 dark:bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full shadow-xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform touch-manipulation select-none"
+            >
+              <Keyboard size={20} />
+            </button>
           </div>
         </div>
       )}
