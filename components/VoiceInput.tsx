@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, Loader2, Check, X, Keyboard, Camera, Sparkles, FileText, Edit2, ZapOff } from 'lucide-react';
+import { Mic, Loader2, Check, X, Keyboard, Camera, Sparkles, FileText, Edit2, ZapOff, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { parseExpenseVoiceCommand, analyzeReceiptImage } from '../services/geminiService';
 import { AppState, ExpenseAnalysis } from '../types';
@@ -355,45 +355,74 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[200] bg-black flex flex-col pointer-events-auto"
           >
-            {/* Video preview */}
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
+            {/* Gallery Input (Hidden) */}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={(e) => {
+                closeCamera();
+                handleImageUpload(e);
+              }}
             />
+
+            {/* Video preview */}
+            <div className="flex-1 relative overflow-hidden">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+
+              {/* Close button (Top) */}
+              <div className="absolute top-0 left-0 right-0 p-5 flex justify-end pointer-events-none">
+                <button
+                  onClick={closeCamera}
+                  className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform pointer-events-auto"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
 
             {/* Hidden canvas for capture */}
             <canvas ref={canvasRef} className="hidden" />
 
-            {/* Overlay controls */}
-            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-              {/* Top bar */}
-              <div className="flex justify-end p-5 pointer-events-auto">
+            {/* Bottom controls bar - Solid Black */}
+            <div className="bg-black px-8 py-10 flex items-center justify-between pointer-events-auto border-t border-white/5">
+              {/* Gallery Button */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-12 h-12 flex items-center justify-center text-white active:scale-90 transition-transform"
+              >
+                <div className="p-2 border-2 border-white/20 rounded-lg">
+                  <ImageIcon size={24} />
+                </div>
+              </button>
+
+              {/* Shutter button - Match provided design */}
+              <div className="relative flex items-center justify-center">
                 <button
-                  onClick={closeCamera}
-                  className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white active:scale-95 transition-transform"
+                  onClick={capturePhoto}
+                  className="w-20 h-20 rounded-full border-[3px] border-white flex items-center justify-center active:scale-95 transition-transform"
                 >
-                  <X size={22} />
+                  <div className="w-[85%] h-[85%] rounded-full bg-white" />
                 </button>
               </div>
 
-              {/* Bottom controls */}
-              <div className="flex flex-col items-center gap-3 pb-14 pointer-events-auto">
-                {cameraError && (
-                  <p className="text-red-400 text-sm bg-black/60 px-4 py-2 rounded-full">{cameraError}</p>
-                )}
-                {/* Shutter button */}
-                <button
-                  onClick={capturePhoto}
-                  className="w-20 h-20 rounded-full bg-white border-4 border-white/30 flex items-center justify-center active:scale-90 transition-transform shadow-xl"
-                >
-                  <div className="w-14 h-14 rounded-full bg-white" />
-                </button>
-                <p className="text-white/60 text-xs">Toca para capturar</p>
-              </div>
+              {/* Spacer for symmetry (or camera icon from image if desired, but user said 'voltear camara olvidado') */}
+              <div className="w-12 h-12" />
             </div>
+
+            {/* Camera error message overlay */}
+            {cameraError && (
+              <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 flex justify-center p-4">
+                <p className="text-red-400 text-sm bg-black/80 px-4 py-2 rounded-full border border-red-900/50">{cameraError}</p>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
