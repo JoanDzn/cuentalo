@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Transaction, TransactionType, RateData } from '../types';
 import { ArrowLeftRight, ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard, List, Calculator, Loader2 } from 'lucide-react';
 import TransactionListModal from './TransactionListModal';
+import { useCurrencyPreference } from '../hooks/useCurrencyPreference';
 
 
 interface DashboardProps {
@@ -18,6 +19,7 @@ interface DashboardProps {
     onSavingsClick: () => void;
     onCalculatorClick: () => void;
     loading?: boolean;
+    userId?: string;
 }
 
 const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick, onSavingsClick }: { onExpenseClick: () => void, onIncomeClick: () => void, onMissionsClick: () => void, onSavingsClick: () => void }) => {
@@ -61,18 +63,45 @@ const RecurringCTA = ({ onExpenseClick, onIncomeClick, onMissionsClick, onSaving
         return () => clearInterval(interval);
     }, [page]);
 
+    // Swipe left/right – pointer capture ensures we always get pointerup
+    const swipeStartX = useRef<number | null>(null);
+    const swipeMoved = useRef(false);
+
+    const onSwipeStart = (e: React.PointerEvent<HTMLDivElement>) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        swipeStartX.current = e.clientX;
+        swipeMoved.current = false;
+    };
+    const onSwipeMove = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (swipeStartX.current === null) return;
+        if (Math.abs(e.clientX - swipeStartX.current) > 8) swipeMoved.current = true;
+    };
+    const onSwipeEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (swipeStartX.current === null) return;
+        const diff = e.clientX - swipeStartX.current;
+        if (Math.abs(diff) > 40) {
+            if (diff < 0) setPage(prev => (prev + 1) % slides.length);
+            else setPage(prev => (prev - 1 + slides.length) % slides.length);
+        }
+        swipeStartX.current = null;
+    };
+
     const current = slides[page];
 
     return (
         <div id="recurring-carousel" className="w-full">
             <div
                 className="bg-white dark:bg-[#111] rounded-[24px] pl-4 pr-2 pt-3 pb-4 md:py-5 relative shadow-lg cursor-pointer active:scale-95 transition-transform border border-gray-100 dark:border-white/5"
+                onPointerDown={onSwipeStart}
+                onPointerMove={onSwipeMove}
+                onPointerUp={onSwipeEnd}
+                onPointerCancel={() => { swipeStartX.current = null; }}
             >
                 {/* Click Zones */}
                 <div className="absolute inset-0 z-10 flex">
-                    <div className="w-[40%] h-full" onClick={() => current.action()} />
-                    <div className="w-[20%] h-full" onClick={() => setPage(prev => (prev + 1) % 4)} />
-                    <div className="w-[40%] h-full" onClick={() => current.action()} />
+                    <div className="w-[40%] h-full" onClick={() => { if (!swipeMoved.current) current.action(); }} />
+                    <div className="w-[20%] h-full" onClick={() => { if (!swipeMoved.current) setPage(prev => (prev + 1) % 4); }} />
+                    <div className="w-[40%] h-full" onClick={() => { if (!swipeMoved.current) current.action(); }} />
                 </div>
 
                 <div className="flex items-center justify-between relative z-20 pointer-events-none">
@@ -139,14 +168,17 @@ const formatDate = (dateStep: string) => {
     return `${day}/${month}/${year}`;
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onSubscriptionsClick, onFixedIncomeClick, onMissionsClick, onSavingsClick, onCalculatorClick, loading = false }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onSubscriptionsClick, onFixedIncomeClick, onMissionsClick, onSavingsClick, onCalculatorClick, loading = false, userId }) => {
     const [viewMode, setViewMode] = useState<'recent' | 'history'>('recent');
     const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
     const [showAllRates, setShowAllRates] = useState(false);
     const [hasMounted, setHasMounted] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalType, setModalType] = useState<TransactionType | 'all'>('expense');
-    const [showVES, setShowVES] = useState(false);
+    const [showSecondary, setShowSecondary] = useState(false); // toggle to secondary currency
+
+    const [primaryCurrency] = useCurrencyPreference(userId);
+    const isVES = primaryCurrency === 'VES';
 
     // Set mounted flag after initial render
     React.useEffect(() => {
@@ -192,25 +224,39 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
         return t.date.startsWith(currentMonthKey);
     });
 
-    // Logic: Savings (Expense) are subtracted from Income to show "Net Disposable Income".
-    // They are NOT added to Total Expense.
+    // ── Balance helpers ──────────────────────────────────────────────────────
+    // For VES users: sum originalAmounts in Bs directly → no fluctuation.
+    // For USD users: sum amount (USD) as before.
+    const vesAmount = (t: Transaction): number => {
+        if (t.originalCurrency === 'VES' && t.originalAmount != null) return t.originalAmount;
+        // USD transaction → convert to Bs at current BCV rate
+        return t.amount * rates.bcv;
+    };
+    const usdAmount = (t: Transaction): number => t.amount;
+
+    const getAmount = (t: Transaction) => isVES ? vesAmount(t) : usdAmount(t);
+
+    // Current month sums in primary currency
     const totalIncome = currentMonthTransactions.reduce((acc, t) => {
-        if (t.type === 'income') return acc + t.amount;
-        if (t.type === 'expense' && (t.category === 'Ahorro' || t.category === 'Savings')) return acc - t.amount;
+        if (t.type === 'income') return acc + getAmount(t);
+        if (t.type === 'expense' && (t.category === 'Ahorro' || t.category === 'Savings')) return acc - getAmount(t);
         return acc;
     }, 0);
 
     const totalExpense = currentMonthTransactions.reduce((acc, t) => {
-        if (t.type === 'expense' && t.category !== 'Ahorro' && t.category !== 'Savings') return acc + t.amount;
+        if (t.type === 'expense' && t.category !== 'Ahorro' && t.category !== 'Savings') return acc + getAmount(t);
         return acc;
     }, 0);
 
-    const balanceUSD = totalIncome - totalExpense;
+    const balancePrimary = totalIncome - totalExpense; // in primary currency
 
-    // Savings Balance Calculation (Total Accumulated)
+    // Secondary display (the other currency)
+    const balanceSecondary = isVES ? balancePrimary / rates.bcv : balancePrimary * rates.bcv;
+
+    // Savings Balance in primary currency
     const totalSavingsBalance = sortedTransactions
         .filter(t => t.category === 'Ahorro' || t.category.toLowerCase().includes('ahorro'))
-        .reduce((acc, curr) => acc + (curr.type === 'expense' ? curr.amount : -curr.amount), 0);
+        .reduce((acc, curr) => acc + (curr.type === 'expense' ? getAmount(curr) : -getAmount(curr)), 0);
 
     // Monthly Grouping Calculation
     const monthlyData = useMemo(() => {
@@ -305,7 +351,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                             Balance Total
                                         </p>
                                         <button
-                                            onClick={() => setShowVES(!showVES)}
+                                            onClick={() => setShowSecondary(s => !s)}
                                             className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-all active:scale-95"
                                             aria-label="Cambiar moneda"
                                         >
@@ -313,13 +359,32 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                         </button>
                                     </div>
 
-                                    <div className={`font-extrabold tracking-tighter w-full flex justify-center items-baseline gap-1 ${showVES ? ((balanceUSD * rates.bcv) > 99999 ? 'text-3xl md:text-5xl' : 'text-5xl md:text-6xl') : 'text-[4rem] leading-none md:text-7xl'} ${balanceUSD >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
-                                        <span className="flex items-baseline">
-                                            {!showVES && '$'}
-                                            {(showVES ? balanceUSD * rates.bcv : balanceUSD).toLocaleString(showVES ? 'es-VE' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </span>
-                                        {showVES && <span className="text-2xl md:text-3xl font-bold">Bs</span>}
-                                    </div>
+                                    {/* Primary balance */}
+                                    {!showSecondary ? (
+                                        <div className={`font-extrabold tracking-tighter w-full flex justify-center items-baseline gap-1 ${isVES
+                                            ? (Math.abs(balancePrimary) > 99999 ? 'text-3xl md:text-5xl' : 'text-5xl md:text-6xl')
+                                            : 'text-[4rem] leading-none md:text-7xl'
+                                            } ${balancePrimary >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
+                                            <span className="flex items-baseline">
+                                                {!isVES && '$'}
+                                                {balancePrimary.toLocaleString(isVES ? 'es-VE' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                            {isVES && <span className="text-2xl md:text-3xl font-bold">Bs</span>}
+                                        </div>
+                                    ) : (
+                                        <div className={`font-extrabold tracking-tighter w-full flex justify-center items-baseline gap-1 ${!isVES
+                                            ? (Math.abs(balanceSecondary) > 99999 ? 'text-3xl md:text-5xl' : 'text-5xl md:text-6xl')
+                                            : 'text-[4rem] leading-none md:text-7xl'
+                                            } ${balanceSecondary >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
+                                            <span className="flex items-baseline">
+                                                {isVES && '$'}
+                                                {balanceSecondary.toLocaleString(isVES ? 'en-US' : 'es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                            {!isVES && <span className="text-2xl md:text-3xl font-bold">Bs</span>}
+                                        </div>
+                                    )}
+
+
                                 </div>
 
 
@@ -333,7 +398,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                             <ArrowUpRight size={18} />
                                         </div>
                                         <div className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
-                                            ${totalIncome.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                            ${currentMonthTransactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : (t.type === 'expense' && (t.category === 'Ahorro' || t.category === 'Savings')) ? acc - t.amount : acc, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                         </div>
                                     </button>
 
@@ -345,7 +410,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                             <ArrowDownRight size={18} />
                                         </div>
                                         <div className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
-                                            ${totalExpense.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                            ${currentMonthTransactions.reduce((acc, t) => t.type === 'expense' && t.category !== 'Ahorro' && t.category !== 'Savings' ? acc + t.amount : acc, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                         </div>
                                     </button>
 
@@ -357,7 +422,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                             <Coins size={18} />
                                         </div>
                                         <div className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
-                                            ${totalSavingsBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                            ${sortedTransactions.filter(t => t.category === 'Ahorro' || t.category.toLowerCase().includes('ahorro')).reduce((acc, t) => acc + (t.type === 'expense' ? t.amount : -t.amount), 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                         </div>
                                     </button>
                                 </div>

@@ -15,6 +15,8 @@ import { dbService } from '../services/dbService';
 import { OnboardingTour } from '../components/OnboardingTour';
 import { normalizeToUSD } from '../utils/financeUtils';
 import CurrencyConverterModal from '../components/CurrencyConverterModal';
+import { setCurrencyPreference, getCurrencyPreference } from '../hooks/useCurrencyPreference';
+import { AnimatedBackground } from '../components/AnimatedBackground';
 
 // Tasas por defecto (Fallback)
 const DEFAULT_RATES: RateData = {
@@ -54,6 +56,7 @@ const DashboardPage: React.FC = () => {
   const [isLoadingRate, setIsLoadingRate] = useState<boolean>(true);
   const [dataLoading, setDataLoading] = useState<boolean>(true);
   const [showTour, setShowTour] = useState(false);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
 
   // Check Onboarding Status
   useEffect(() => {
@@ -70,7 +73,20 @@ const DashboardPage: React.FC = () => {
     setShowTour(false);
     if (user) {
       localStorage.setItem(`onboarding_completed_${user.id}`, 'true');
+      // Show currency picker if user hasn't chosen yet
+      const hasCurrency = getCurrencyPreference(user.id);
+      // getCurrencyPreference defaults to 'USD', but we need to know if they explicitly set it.
+      // We detect by checking if the key actually exists:
+      const hasExplicitCurrency = localStorage.getItem(`cuentalo_currency_${user.id}`);
+      if (!hasExplicitCurrency) {
+        setTimeout(() => setShowCurrencyPicker(true), 400);
+      }
     }
+  };
+
+  const handleCurrencyPickerSelect = (currency: 'USD' | 'VES') => {
+    if (user) setCurrencyPreference(currency, user.id);
+    setShowCurrencyPicker(false);
   };
 
   // Fetch user and data
@@ -471,6 +487,7 @@ const DashboardPage: React.FC = () => {
                 onSavingsClick={() => setShowSavings(true)}
                 onCalculatorClick={() => setShowCalculator(true)}
                 loading={dataLoading}
+                userId={user?.id}
               />
             </motion.div>
           )}
@@ -479,6 +496,18 @@ const DashboardPage: React.FC = () => {
         <CurrencyConverterModal
           isOpen={showCalculator}
           onClose={() => setShowCalculator(false)}
+          onAddTransaction={(data) => {
+            handleNewTransaction({
+              amount: data.amount,
+              type: data.type,
+              description: data.description,
+              category: 'General',
+              currency: data.currency,
+              rate_type: null,
+              date: new Date().toISOString().split('T')[0],
+              is_invalid: false,
+            } as any);
+          }}
         />
 
         {/* Voice Interaction Layer */}
@@ -517,6 +546,71 @@ const DashboardPage: React.FC = () => {
           onComplete={handleTourComplete}
           userName={user?.name?.split(' ')[0] || 'Amigo'}
         />
+
+        {/* Currency Picker (shown after tour for new users) */}
+        <AnimatePresence>
+          {showCurrencyPicker && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-md"
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 60 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 40 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                className="w-full sm:max-w-sm bg-[#111] border border-white/10 rounded-t-[36px] sm:rounded-[36px] px-6 pt-12 pb-16"
+              >
+                {/* Handle bar */}
+                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-7 sm:hidden" />
+
+                <div className="text-center mb-7">
+                  <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl">💱</span>
+                  </div>
+                  <h2 className="text-xl font-bold text-white mb-1">¿Con qué moneda trabajas?</h2>
+                  <p className="text-gray-500 text-sm">Puedes cambiarlo en cualquier momento desde tu perfil.</p>
+                </div>
+
+                {/* Side by side options */}
+                <div className="grid grid-cols-2 gap-3">
+                  <motion.button
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => handleCurrencyPickerSelect('USD')}
+                    className="flex flex-col items-center gap-3 bg-white/5 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/40 rounded-[24px] py-10 px-4 transition-all duration-200 group"
+                  >
+                    <span className="text-4xl font-black text-emerald-400 leading-none">$</span>
+                    <div className="text-center">
+                      <div className="text-white font-bold text-sm">Dólar</div>
+                      <div className="text-gray-500 text-[11px] mt-0.5">USD</div>
+                    </div>
+                    <span className="text-[10px] text-emerald-400/80 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">Estable</span>
+                  </motion.button>
+
+                  <motion.button
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => handleCurrencyPickerSelect('VES')}
+                    className="flex flex-col items-center gap-3 bg-white/5 hover:bg-yellow-400/10 border border-white/10 hover:border-yellow-400/40 rounded-[24px] py-10 px-4 transition-all duration-200 group"
+                  >
+                    <span className="text-3xl font-black text-yellow-400 leading-none">Bs</span>
+                    <div className="text-center">
+                      <div className="text-white font-bold text-sm">Bolívar</div>
+                      <div className="text-gray-500 text-[11px] mt-0.5">VES</div>
+                    </div>
+                    <span className="text-[10px] text-yellow-400/80 bg-yellow-400/10 px-2.5 py-1 rounded-full border border-yellow-400/20">Sin fluctuación</span>
+                  </motion.button>
+                </div>
+
+                <p className="text-center text-[11px] text-gray-600 mt-5 leading-relaxed">
+                  Si tus ingresos son en bolívares y no quieres que tu balance cambie con la tasa, elige <span className="text-yellow-400">Bolívar</span>. Si trabajas con dólares, elige <span className="text-emerald-400">Dólar</span>.
+                </p>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
 
         {/* Modals & Drawers */}
         <EditModal

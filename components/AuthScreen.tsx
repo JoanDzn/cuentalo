@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Mail, Lock, User, LogIn, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, Lock, User, LogIn, UserPlus, AlertCircle, Eye, EyeOff, DollarSign, ChevronRight } from 'lucide-react';
 import { authService } from '../services/authService';
+import { setCurrencyPreference, PrimaryCurrency } from '../hooks/useCurrencyPreference';
 import { useGoogleLogin } from '@react-oauth/google';
 import { AnimatedBackground } from './AnimatedBackground';
 
@@ -11,6 +12,8 @@ const AuthScreen: React.FC = () => {
   const location = useLocation();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState<'auth' | 'currency'>('auth');
+  const [newUserId, setNewUserId] = useState<string | undefined>();
 
   useEffect(() => {
     if (location.state?.mode === 'signup') {
@@ -38,15 +41,17 @@ const AuthScreen: React.FC = () => {
     try {
       if (isLogin) {
         await authService.signInWithEmail(email, password);
+        navigate('/dashboard');
       } else {
         if (!name.trim()) {
           setError('El nombre es requerido');
           setLoading(false);
           return;
         }
-        await authService.signUpWithEmail(email, password, name);
+        const user = await authService.signUpWithEmail(email, password, name);
+        setNewUserId(user.id);
+        setStep('currency'); // Show currency selection after signup
       }
-      navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Error al autenticar. Por favor intenta de nuevo.');
     } finally {
@@ -58,8 +63,15 @@ const AuthScreen: React.FC = () => {
     setError('');
     setLoading(true);
     try {
-      await authService.signInWithGoogle(code, window.location.origin + '/auth');
-      navigate('/dashboard');
+      const user = await authService.signInWithGoogle(code, window.location.origin + '/auth');
+      // For Google signup, check if user is new (no currency set yet)
+      const existing = localStorage.getItem(`cuentalo_currency_${user.id}`);
+      if (!existing) {
+        setNewUserId(user.id);
+        setStep('currency');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Error al autenticar con Google.');
     } finally {
@@ -94,6 +106,100 @@ const AuthScreen: React.FC = () => {
     }
   }, [location.search]);
 
+  const handleCurrencySelect = (currency: PrimaryCurrency) => {
+    setCurrencyPreference(currency, newUserId);
+    navigate('/dashboard');
+  };
+
+  // ── Currency selection screen ────────────────────────────────────────────
+  if (step === 'currency') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="min-h-screen flex items-center justify-center bg-[#0a0a0a] px-6 py-12 relative overflow-hidden"
+      >
+        <div style={{ opacity: 0.3 }} className="fixed inset-0 pointer-events-none z-0">
+          <AnimatedBackground />
+        </div>
+        <div className="w-full max-w-md relative z-10">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-extrabold text-white lowercase mb-3">cuentalo</h1>
+            <h2 className="text-2xl font-bold text-white mb-2">¡Bienvenido! 👋</h2>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Antes de empezar, elige con qué moneda quieres trabajar.<br />
+              <span className="text-indigo-400 font-medium">Puedes cambiarla cuando quieras desde tu perfil.</span>
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {/* USD Option */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleCurrencySelect('USD')}
+              className="w-full bg-white/10 hover:bg-white/15 backdrop-blur-xl border border-white/10 hover:border-indigo-400/40 rounded-[28px] p-6 text-left transition-all duration-300 group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center shrink-0">
+                  <span className="text-2xl font-black text-emerald-400">$</span>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-lg font-bold text-white">Dólar (USD)</h3>
+                    <ChevronRight size={18} className="text-white/30 group-hover:text-indigo-400 transition-colors" />
+                  </div>
+                  <p className="text-sm text-gray-400 leading-relaxed">
+                    Todas tus transacciones y balance se muestran en dólares. Ideal si recibes o manejas ingresos en USD.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full">Balance estable</span>
+                    <span className="text-xs bg-white/5 text-gray-400 border border-white/10 px-3 py-1 rounded-full">Ver equivalente en Bs</span>
+                  </div>
+                </div>
+              </div>
+            </motion.button>
+
+            {/* VES Option */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleCurrencySelect('VES')}
+              className="w-full bg-white/10 hover:bg-white/15 backdrop-blur-xl border border-white/10 hover:border-yellow-400/40 rounded-[28px] p-6 text-left transition-all duration-300 group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-yellow-500/20 flex items-center justify-center shrink-0">
+                  <span className="text-xl font-black text-yellow-400">Bs</span>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-lg font-bold text-white">Bolívar (Bs)</h3>
+                    <ChevronRight size={18} className="text-white/30 group-hover:text-yellow-400 transition-colors" />
+                  </div>
+                  <p className="text-sm text-gray-400 leading-relaxed">
+                    Tu balance se muestra en bolívares. Tu saldo en Bs no cambia con la tasa del día — solo cambia cuando registras una transacción.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-3 py-1 rounded-full">Sin fluctuación diaria</span>
+                    <span className="text-xs bg-white/5 text-gray-400 border border-white/10 px-3 py-1 rounded-full">Ver equivalente en USD</span>
+                  </div>
+                </div>
+              </div>
+            </motion.button>
+          </div>
+
+          <p className="text-center text-xs text-gray-600 mt-6">
+            💡 Si tus ingresos son en bolívares y no quieres que tu balance cambie por la tasa,
+            elige <span className="text-yellow-400 font-semibold">Bolívar</span>.
+            Si trabajas con dólares, elige <span className="text-emerald-400 font-semibold">Dólar</span>.
+          </p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // ── Auth screen ────────────────────────────────────────────────────────────
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}

@@ -1,133 +1,229 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Copy, ChevronDown, Delete, ArrowRightLeft, Check } from 'lucide-react';
+import { X, Copy, Check, ChevronRight, Delete, TrendingDown, TrendingUp } from 'lucide-react';
 import { useExchangeRates } from '../services/exchangeRateService';
-import { RateData } from '../types';
 
 interface CurrencyConverterModalProps {
     isOpen: boolean;
     onClose: () => void;
+    /** Optional: called when user taps "Registrar" with a pre-filled transaction */
+    onAddTransaction?: (data: { amount: number; type: 'expense' | 'income'; description: string; currency: 'USD' | 'VES' | 'EUR' }) => void;
 }
 
-type Currency = 'USD' | 'VES' | 'EUR';
 type RateType = 'bcv' | 'euro' | 'usdt';
+type ActiveField = 'top' | 'bottom';
 
-const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen, onClose }) => {
+const RATE_CONFIG: Record<RateType, { topSymbol: string; topLabel: string; currency: 'USD' | 'VES' | 'EUR' }> = {
+    bcv: { topSymbol: '$', topLabel: 'Dólar BCV', currency: 'USD' },
+    euro: { topSymbol: '€', topLabel: 'Euro', currency: 'EUR' },
+    usdt: { topSymbol: '$', topLabel: 'USDT', currency: 'USD' },
+};
+
+const RATE_ORDER: RateType[] = ['bcv', 'euro', 'usdt'];
+
+const ACCENT: Record<RateType, {
+    btn: string; btnText: string; btnShadow: string;
+    border: string; symbol: string;
+    delBg: string; delText: string;
+    copyBg: string; copyText: string;
+    menuActive: string; menuActiveBg: string;
+    pill: string; registerBg: string; registerText: string;
+}> = {
+    bcv: {
+        btn: 'bg-indigo-600 hover:bg-indigo-700',
+        btnText: 'text-white',
+        btnShadow: '0 4px 16px rgba(99,102,241,0.40)',
+        border: 'border-indigo-400/50',
+        symbol: 'text-indigo-500',
+        delBg: 'bg-indigo-100 dark:bg-indigo-900/30',
+        delText: 'text-indigo-600 dark:text-indigo-400',
+        copyBg: 'bg-white dark:bg-[#1E1E1E]',
+        copyText: 'text-indigo-500 dark:text-indigo-400',
+        menuActive: 'text-indigo-600 dark:text-indigo-400',
+        menuActiveBg: 'bg-indigo-50 dark:bg-indigo-900/30',
+        pill: 'text-indigo-500 dark:text-indigo-400',
+        registerBg: 'bg-indigo-600 hover:bg-indigo-700',
+        registerText: 'text-white',
+    },
+    euro: {
+        btn: 'bg-yellow-400 hover:bg-yellow-500',
+        btnText: 'text-yellow-900',
+        btnShadow: '0 4px 16px rgba(234,179,8,0.40)',
+        border: 'border-yellow-400/50',
+        symbol: 'text-yellow-500',
+        delBg: 'bg-yellow-100 dark:bg-yellow-900/30',
+        delText: 'text-yellow-600 dark:text-yellow-400',
+        copyBg: 'bg-white dark:bg-[#1E1E1E]',
+        copyText: 'text-yellow-500 dark:text-yellow-400',
+        menuActive: 'text-yellow-600 dark:text-yellow-400',
+        menuActiveBg: 'bg-yellow-50 dark:bg-yellow-900/30',
+        pill: 'text-yellow-500 dark:text-yellow-400',
+        registerBg: 'bg-yellow-400 hover:bg-yellow-500',
+        registerText: 'text-yellow-900',
+    },
+    usdt: {
+        btn: 'bg-emerald-500 hover:bg-emerald-600',
+        btnText: 'text-white',
+        btnShadow: '0 4px 16px rgba(16,185,129,0.40)',
+        border: 'border-emerald-400/50',
+        symbol: 'text-emerald-500',
+        delBg: 'bg-emerald-100 dark:bg-emerald-900/30',
+        delText: 'text-emerald-600 dark:text-emerald-400',
+        copyBg: 'bg-white dark:bg-[#1E1E1E]',
+        copyText: 'text-emerald-500 dark:text-emerald-400',
+        menuActive: 'text-emerald-600 dark:text-emerald-400',
+        menuActiveBg: 'bg-emerald-50 dark:bg-emerald-900/30',
+        pill: 'text-emerald-500 dark:text-emerald-400',
+        registerBg: 'bg-emerald-500 hover:bg-emerald-600',
+        registerText: 'text-white',
+    },
+};
+
+const RATE_OPTIONS: { id: RateType; label: string }[] = [
+    { id: 'bcv', label: 'Dólar BCV' },
+    { id: 'euro', label: 'Euro' },
+    { id: 'usdt', label: 'USDT' },
+];
+
+const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen, onClose, onAddTransaction }) => {
     const { rates, loading } = useExchangeRates();
-    const [amount, setAmount] = useState('0');
-    const [currency, setCurrency] = useState<Currency>('USD');
+
     const [selectedRate, setSelectedRate] = useState<RateType>('bcv');
-    const [result, setResult] = useState<number>(0);
-    const [activeMenu, setActiveMenu] = useState<'currency' | 'rate' | null>(null);
-    const [copied, setCopied] = useState(false);
+    const [showRateMenu, setShowRateMenu] = useState(false);
+
+    const [topValue, setTopValue] = useState('1');
+    const [bottomValue, setBottomValue] = useState('');
+    const [activeField, setActiveField] = useState<ActiveField>('top');
+
+    const [copiedTop, setCopiedTop] = useState(false);
+    const [copiedBottom, setCopiedBottom] = useState(false);
+    const [showRegisterOptions, setShowRegisterOptions] = useState(false);
+
     const deleteTimer = useRef<NodeJS.Timeout | null>(null);
+    const rateMenuRef = useRef<HTMLDivElement>(null);
+    const pillRef = useRef<HTMLDivElement>(null);
+    // Swipe state for rate pill
+    const swipeStartX = useRef<number | null>(null);
+    const swipeMoved = useRef(false);
 
-    // Auto-select rate when currency changes
-    useEffect(() => {
-        if (currency === 'EUR') {
-            setSelectedRate('euro');
-        } else if (selectedRate === 'euro' && currency !== 'VES') {
-            setSelectedRate('bcv');
-        }
-    }, [currency]);
+    const config = RATE_CONFIG[selectedRate];
+    const accent = ACCENT[selectedRate];
+    const rateValue = rates ? rates[selectedRate] : null;
 
-    // Calculate result
+    // Recalculate on change
     useEffect(() => {
         if (!rates) return;
-        const val = parseFloat(amount || '0');
-        if (isNaN(val)) {
-            setResult(0);
-            return;
-        }
-
         const rate = rates[selectedRate];
+        if (!rate) return;
 
-        if (currency === 'USD') {
-            setResult(val * rate);
-        } else if (currency === 'EUR') {
-            setResult(val * rate);
+        if (activeField === 'top') {
+            const num = parseFloat(topValue.replace(',', '.')) || 0;
+            setBottomValue(formatNumber(num * rate));
         } else {
-            setResult(val / rate);
+            const num = parseFloat(bottomValue.replace(',', '.')) || 0;
+            setTopValue(formatNumber(num / rate));
         }
-    }, [amount, currency, selectedRate, rates]);
+    }, [topValue, bottomValue, selectedRate, rates, activeField]);
 
-    const handleCreateNumber = (num: string) => {
-        if (amount === '0' && num !== '.') {
-            setAmount(num);
-        } else if (amount.includes('.') && num === '.') {
-            return;
-        } else {
-            if (amount.replace('.', '').length >= 12) return;
-            setAmount(amount + num);
-        }
+    // Close dropdown when clicking outside (excluding the pill itself to avoid toggle conflict)
+    useEffect(() => {
+        if (!showRateMenu) return;
+        const handler = (e: MouseEvent) => {
+            const target = e.target as Node;
+            const insideMenu = rateMenuRef.current?.contains(target);
+            const insidePill = pillRef.current?.contains(target);
+            if (!insideMenu && !insidePill) setShowRateMenu(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [showRateMenu]);
+
+    const cycleRate = (dir: 1 | -1) => {
+        setSelectedRate(prev => {
+            const idx = RATE_ORDER.indexOf(prev);
+            const next = (idx + dir + RATE_ORDER.length) % RATE_ORDER.length;
+            return RATE_ORDER[next];
+        });
+        setActiveField('top');
     };
 
-    const handleDelete = () => {
-        if (amount.length === 1) {
-            setAmount('0');
-        } else {
-            setAmount(amount.slice(0, -1));
+    // Swipe gestures on the rate pill — vertical (up = next, down = prev)
+    const handleSwipeStart = (clientY: number) => {
+        swipeStartX.current = clientY;
+        swipeMoved.current = false;
+    };
+    const handleSwipeMove = (clientY: number) => {
+        if (swipeStartX.current === null) return;
+        const diff = clientY - swipeStartX.current;
+        if (Math.abs(diff) > 28 && !swipeMoved.current) {
+            swipeMoved.current = true;
+            cycleRate(diff < 0 ? 1 : -1); // swipe up → next, swipe down → prev
+            swipeStartX.current = clientY;
         }
     };
+    const handleSwipeEnd = () => { swipeStartX.current = null; };
+
+    function formatNumber(n: number): string {
+        if (isNaN(n) || !isFinite(n)) return '0';
+        return parseFloat(n.toFixed(2)).toString().replace('.', ',');
+    }
+
+    function formatDisplay(val: string): string {
+        if (!val || val === '0') return '0,00';
+        const num = parseFloat(val.replace(',', '.'));
+        if (isNaN(num)) return '0,00';
+        return new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+    }
+
+    const handleKey = useCallback((key: string) => {
+        const setter = activeField === 'top' ? setTopValue : setBottomValue;
+        setter(prev => {
+            if (key === 'DEL') { const n = prev.slice(0, -1); return n === '' ? '0' : n; }
+            if (key === 'CLEAR') return '0';
+            if (prev === '0' && key !== ',') return key;
+            if (key === ',' && prev.includes(',')) return prev;
+            if (prev.replace(',', '').replace(/\D/g, '').length >= 12) return prev;
+            return prev + key;
+        });
+    }, [activeField]);
 
     const startDelete = () => {
-        handleDelete();
-        deleteTimer.current = setTimeout(() => {
-            setAmount('0');
-        }, 600);
+        handleKey('DEL');
+        deleteTimer.current = setTimeout(() => handleKey('CLEAR'), 600);
+    };
+    const stopDelete = () => {
+        if (deleteTimer.current) { clearTimeout(deleteTimer.current); deleteTimer.current = null; }
     };
 
-    const clearDeleteTimer = () => {
-        if (deleteTimer.current) {
-            clearTimeout(deleteTimer.current);
-            deleteTimer.current = null;
-        }
+    const copyTop = () => {
+        navigator.clipboard.writeText(formatDisplay(topValue));
+        setCopiedTop(true);
+        setTimeout(() => setCopiedTop(false), 2000);
+    };
+    const copyBottom = () => {
+        navigator.clipboard.writeText(formatDisplay(bottomValue));
+        setCopiedBottom(true);
+        setTimeout(() => setCopiedBottom(false), 2000);
     };
 
-    const formatCurrency = (val: number, curr: Currency) => {
-        return new Intl.NumberFormat('es-VE', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        }).format(val);
+    // Amount in top currency (USD/EUR) for registration
+    const getAmountForRegister = (): number => {
+        const num = parseFloat(topValue.replace(',', '.')) || 0;
+        return num;
     };
 
-    const getTargetCurrency = (): Currency => {
-        if (currency === 'VES') {
-            return selectedRate === 'euro' ? 'EUR' : 'USD';
-        }
-        return 'VES';
-    };
-
-    const handleCopy = () => {
-        navigator.clipboard.writeText(formatCurrency(result, getTargetCurrency()));
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
-    const handleSwap = () => {
-        setCurrency(prev => {
-            if (prev === 'VES') {
-                return selectedRate === 'euro' ? 'EUR' : 'USD';
-            }
-            return 'VES';
+    const handleRegister = (type: 'expense' | 'income') => {
+        const amount = getAmountForRegister();
+        if (!amount || amount <= 0) return;
+        onAddTransaction?.({
+            amount,
+            type,
+            description: `Conversión ${config.topLabel}`,
+            currency: config.currency,
         });
+        setShowRegisterOptions(false);
+        onClose();
     };
-
-    // Custom Keypad Button
-    const Key = ({ value, label, onClick, special = false, ...props }: any) => (
-        <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={onClick}
-            {...props}
-            className={`h-14 sm:h-16 rounded-2xl text-xl sm:text-2xl font-medium flex items-center justify-center select-none
-        ${special
-                    ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
-                    : 'bg-gray-50 text-gray-900 dark:bg-[#2C2C2C] dark:text-white hover:bg-gray-100 dark:hover:bg-[#333]'
-                } transition-colors`}
-        >
-            {label || value}
-        </motion.button>
-    );
 
     if (!isOpen) return null;
 
@@ -138,8 +234,8 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-end sm:items-center justify-center pointer-events-auto"
-                onClick={onClose}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-end sm:items-center justify-center"
+                onClick={() => { setShowRegisterOptions(false); onClose(); }}
             >
                 <motion.div
                     initial={{ y: '100%' }}
@@ -151,196 +247,243 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
                     dragElastic={0.05}
                     dragSnapToOrigin
                     onDragEnd={(_, info) => {
-                        if (info.offset.y > 100 || info.velocity.y > 500) {
-                            onClose();
-                        }
+                        if (info.offset.y > 100 || info.velocity.y > 500) onClose();
                     }}
-                    className="w-full max-w-md bg-white dark:bg-[#1E1E1E] rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl flex flex-col pointer-events-auto min-h-[500px] max-h-[95vh]"
+                    className="w-full sm:max-w-sm bg-white dark:bg-[#1E1E1E] rounded-t-[40px] sm:rounded-[40px] shadow-2xl flex flex-col pointer-events-auto"
                     onClick={e => e.stopPropagation()}
+                    style={{ touchAction: 'none' }}
                 >
                     {/* Drag Handle */}
-                    <div className="w-full flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none shrink-0">
+                    <div className="flex justify-center pt-3 pb-1 touch-none shrink-0">
                         <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full" />
                     </div>
 
                     {/* Header */}
-                    <div className="px-5 pb-2 flex items-center justify-between shrink-0">
+                    <div className="px-5 pb-3 pt-1 flex items-center justify-between shrink-0">
                         <h2 className="text-lg font-bold dark:text-white">Calculadora</h2>
-                        <button onClick={onClose} className="p-2 bg-gray-100 dark:bg-[#2C2C2C] rounded-full text-gray-500 dark:text-gray-400">
+                        <button
+                            onClick={onClose}
+                            className="p-2 bg-gray-100 dark:bg-[#2C2C2C] rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#3a3a3a] transition-colors"
+                        >
                             <X size={20} />
                         </button>
                     </div>
 
-                    <div className="flex flex-col flex-1 px-5 pb-5 pt-2">
+                    {/* ── Top section ── */}
+                    <div className="flex flex-col px-5 gap-3 flex-1">
 
-                        {/* Top Controls Row */}
-                        <div className="flex justify-between items-center w-full mb-1 relative z-50">
-                            {/* Left: Currency */}
-                            <div className="relative">
-                                <button
-                                    onClick={() => setActiveMenu(activeMenu === 'currency' ? null : 'currency')}
-                                    className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-[#2C2C2C] px-3 py-2 rounded-lg active:scale-95 transition-transform"
+                        {/* Rate Selector – outer is w-full so percentages are reliable */}
+                        <div className="relative w-full">
+
+                            {/* Pill: w-1/2 mx-auto centers it perfectly as a block element */}
+                            <div ref={pillRef} className="w-1/2 mx-auto">
+                                <motion.button
+                                    layout
+                                    key={selectedRate}
+                                    style={{ boxShadow: accent.btnShadow, transition: 'background-color 0.3s ease, box-shadow 0.3s ease' }}
+                                    className={`w-full flex items-center justify-center ${accent.btn} ${accent.btnText} font-bold text-sm py-3 rounded-2xl select-none`}
+                                    onClick={() => setShowRateMenu(v => !v)}
+                                    onPointerDown={e => handleSwipeStart(e.clientY)}
+                                    onPointerMove={e => handleSwipeMove(e.clientY)}
+                                    onPointerUp={handleSwipeEnd}
+                                    onPointerLeave={handleSwipeEnd}
                                 >
-                                    <span>{currency}</span>
-                                    <ChevronDown size={14} className={`transition-transform duration-200 ${activeMenu === 'currency' ? 'rotate-180' : ''}`} />
-                                </button>
-
-                                <AnimatePresence>
-                                    {activeMenu === 'currency' && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                                            className="absolute top-full mt-2 left-0 w-32 bg-white dark:bg-[#333] rounded-xl shadow-xl border border-gray-100 dark:border-[#444] overflow-hidden p-1"
+                                    <AnimatePresence mode="wait">
+                                        <motion.span
+                                            key={selectedRate}
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -8 }}
+                                            transition={{ duration: 0.18 }}
+                                            className="pointer-events-none"
                                         >
-                                            {(['USD', 'VES', 'EUR'] as Currency[]).map((c) => (
-                                                <button
-                                                    key={c}
-                                                    onClick={() => {
-                                                        setCurrency(c);
-                                                        setActiveMenu(null);
-                                                    }}
-                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all ${currency === c
-                                                        ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#444]'
-                                                        }`}
-                                                >
-                                                    {c}
-                                                </button>
-                                            ))}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                            {config.topLabel}
+                                        </motion.span>
+                                    </AnimatePresence>
+                                </motion.button>
                             </div>
 
-                            {/* Swap Button */}
-                            <button
-                                onClick={handleSwap}
-                                className="p-2 text-gray-400 hover:text-indigo-500 dark:text-gray-500 dark:hover:text-indigo-400 transition-colors active:scale-90 transform"
-                            >
-                                <ArrowRightLeft size={16} />
-                            </button>
-
-                            {/* Right: Rate */}
-                            <div className="relative">
-                                <button
-                                    onClick={() => setActiveMenu(activeMenu === 'rate' ? null : 'rate')}
-                                    className="flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-[#2C2C2C] px-3 py-2 rounded-lg active:scale-95 transition-transform"
-                                >
-                                    <span className="uppercase">{selectedRate === 'usdt' ? 'USDT' : selectedRate}</span>
-                                    <ChevronDown size={14} className={`transition-transform duration-200 ${activeMenu === 'rate' ? 'rotate-180' : ''}`} />
-                                </button>
-
-                                <AnimatePresence>
-                                    {activeMenu === 'rate' && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                                            className="absolute top-full mt-2 right-0 w-32 bg-white dark:bg-[#333] rounded-xl shadow-xl border border-gray-100 dark:border-[#444] overflow-hidden p-1"
-                                        >
-                                            {[
-                                                { id: 'bcv', label: 'BCV' },
-                                                { id: 'usdt', label: 'USDT' },
-                                                { id: 'euro', label: 'EURO' }
-                                            ].map((rateOption) => (
-                                                <button
-                                                    key={rateOption.id}
-                                                    onClick={() => {
-                                                        setSelectedRate(rateOption.id as RateType);
-                                                        setActiveMenu(null);
-                                                    }}
-                                                    disabled={
-                                                        (currency === 'EUR' && rateOption.id !== 'euro') ||
-                                                        (currency === 'USD' && rateOption.id === 'euro')
-                                                    }
-                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all uppercase flex justify-between items-center ${selectedRate === rateOption.id
-                                                        ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#444]'
-                                                        } ${(currency === 'EUR' && rateOption.id !== 'euro') || (currency === 'USD' && rateOption.id === 'euro') ? 'opacity-30' : ''}`}
-                                                >
-                                                    <span>{rateOption.label}</span>
-                                                </button>
-                                            ))}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                            {/* Dots: pill goes from 25% to 75%, so dots at left-[75%] + small gap */}
+                            <div className="absolute top-1/2 -translate-y-1/2 left-[75%] ml-2 flex flex-col gap-1 items-center">
+                                {RATE_ORDER.map(r => (
+                                    <button
+                                        key={r}
+                                        onClick={() => { setSelectedRate(r); setActiveField('top'); setShowRateMenu(false); }}
+                                        className={`w-1.5 rounded-full transition-all duration-300 ${selectedRate === r
+                                            ? `h-4 ${accent.delBg.split(' ')[0]} opacity-100`
+                                            : 'h-1.5 bg-gray-300 dark:bg-gray-600 opacity-60'
+                                            }`}
+                                    />
+                                ))}
                             </div>
+
+                            {/* Dropdown: left-1/2 on a w-full container = exact center of modal content */}
+                            <AnimatePresence>
+                                {showRateMenu && (
+                                    <motion.div
+                                        ref={rateMenuRef}
+                                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="absolute top-full mt-2 left-[25%] right-[25%] bg-white dark:bg-[#2C2C2C] border border-gray-100 dark:border-[#444] rounded-2xl overflow-hidden z-50 shadow-xl"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        {RATE_OPTIONS.map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                onClick={() => { setSelectedRate(opt.id); setActiveField('top'); setShowRateMenu(false); }}
+                                                className={`w-full text-center px-3 py-2.5 text-sm font-semibold transition-colors ${selectedRate === opt.id
+                                                    ? `${ACCENT[opt.id].menuActive} ${ACCENT[opt.id].menuActiveBg}`
+                                                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#3a3a3a]'
+                                                    }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
-                        {/* Display Area - Centered */}
-                        <div className="flex-1 flex flex-col items-center justify-center py-0">
-                            {/* Input (Small) */}
-                            <div className="text-gray-400 dark:text-gray-500 font-medium text-lg mb-0">
-                                {amount} {currency}
-                            </div>
-
-                            {/* Result (Big) */}
-                            <div className="flex items-center gap-3 mb-3">
-                                <span className="text-6xl sm:text-7xl font-bold text-gray-900 dark:text-white tracking-tight text-center break-all line-clamp-1">
-                                    {formatCurrency(result, getTargetCurrency())}
+                        {/* Exchange Fields */}
+                        <div className="rounded-2xl bg-gray-50 dark:bg-[#2a2a2a] overflow-hidden">
+                            {/* Top Field */}
+                            <button
+                                onClick={() => setActiveField('top')}
+                                className="w-full flex items-center px-4 py-5 border-b border-gray-200 dark:border-[#3a3a3a] transition-all duration-300"
+                            >
+                                <span className={`text-xl font-bold w-8 text-left shrink-0 transition-colors duration-300 ${activeField === 'top' ? accent.symbol : 'text-gray-400 dark:text-gray-500'
+                                    }`}>
+                                    {config.topSymbol}
                                 </span>
-                                <div className="flex flex-col items-start leading-none gap-1 shrink-0">
-                                    <span className="text-xl text-gray-400 dark:text-gray-500 font-medium">
-                                        {currency === 'VES' && selectedRate === 'usdt' ? 'USDT' : (getTargetCurrency() === 'VES' ? 'Bs' : getTargetCurrency())}
-                                    </span>
-                                    <button
-                                        onClick={handleCopy}
-                                        className={`p-1.5 rounded-lg active:scale-95 transition-all flex items-center justify-center relative ${copied
-                                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                                                : 'bg-gray-100 dark:bg-[#2C2C2C] text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
-                                            }`}
-                                    >
-                                        <AnimatePresence mode="wait">
-                                            {copied ? (
-                                                <motion.div
-                                                    key="check"
-                                                    initial={{ scale: 0, rotate: -45 }}
-                                                    animate={{ scale: 1, rotate: 0 }}
-                                                    exit={{ scale: 0, rotate: 45 }}
-                                                    transition={{ duration: 0.2 }}
-                                                >
-                                                    <Check size={16} />
-                                                </motion.div>
-                                            ) : (
-                                                <motion.div
-                                                    key="copy"
-                                                    initial={{ scale: 0 }}
-                                                    animate={{ scale: 1 }}
-                                                    exit={{ scale: 0 }}
-                                                    transition={{ duration: 0.2 }}
-                                                >
-                                                    <Copy size={16} />
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </button>
-                                </div>
-                            </div>
+                                <span className={`flex-1 text-right text-2xl font-bold tracking-tight transition-colors duration-300 ${activeField === 'top' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
+                                    }`}>
+                                    {formatDisplay(topValue)}
+                                </span>
+                                <button
+                                    onClick={e => { e.stopPropagation(); copyTop(); }}
+                                    className={`ml-3 p-2 rounded-xl transition-all duration-300 shrink-0 shadow-sm ${copiedTop ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30' : `${accent.copyBg} ${accent.copyText}`
+                                        }`}
+                                >
+                                    <AnimatePresence mode="wait">
+                                        {copiedTop
+                                            ? <motion.div key="ck" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.15 }}><Check size={15} /></motion.div>
+                                            : <motion.div key="cp" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.15 }}><Copy size={15} /></motion.div>
+                                        }
+                                    </AnimatePresence>
+                                </button>
+                            </button>
 
-                            {/* Rate Info Pill */}
-                            <div className="text-xs font-medium text-gray-400 dark:text-gray-500 mb-10">
-                                Tasa: {rates ? rates[selectedRate].toFixed(2) : '...'} • {selectedRate === 'usdt' ? 'USDT' : selectedRate.toUpperCase()}
-                            </div>
+                            {/* Bottom Field */}
+                            <button
+                                onClick={() => setActiveField('bottom')}
+                                className="w-full flex items-center px-4 py-5"
+                            >
+                                <span className={`text-xl font-bold w-8 text-left shrink-0 transition-colors duration-300 ${activeField === 'bottom' ? accent.symbol : 'text-gray-400 dark:text-gray-500'
+                                    }`}>
+                                    Bs
+                                </span>
+                                <span className={`flex-1 text-right text-2xl font-bold tracking-tight transition-colors duration-300 ${activeField === 'bottom' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
+                                    }`}>
+                                    {formatDisplay(bottomValue)}
+                                </span>
+                                <button
+                                    onClick={e => { e.stopPropagation(); copyBottom(); }}
+                                    className={`ml-3 p-2 rounded-xl transition-all duration-300 shrink-0 shadow-sm ${copiedBottom ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30' : `${accent.copyBg} ${accent.copyText}`
+                                        }`}
+                                >
+                                    <AnimatePresence mode="wait">
+                                        {copiedBottom
+                                            ? <motion.div key="ck" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.15 }}><Check size={15} /></motion.div>
+                                            : <motion.div key="cp" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.15 }}><Copy size={15} /></motion.div>
+                                        }
+                                    </AnimatePresence>
+                                </button>
+                            </button>
+                        </div>
+
+                        {/* Rate Info */}
+                        <div className="flex items-center gap-1.5 px-1">
+                            <span className={`text-sm transition-colors duration-300 ${accent.pill}`}>↑</span>
+                            <span className="text-sm font-medium text-gray-400 dark:text-gray-500">
+                                Tasa {config.topLabel}:{' '}
+                                <span className={`font-bold transition-colors duration-300 ${accent.pill}`}>
+                                    {rateValue ? `${rateValue.toFixed(2)} Bs` : loading ? 'Cargando...' : 'Sin datos'}
+                                </span>
+                            </span>
+                        </div>
+
+                    </div>
+
+                    {/* ── Bottom: Register + Keypad ── */}
+                    <div className="px-5 pb-6 pt-2 flex flex-col gap-2.5 mt-auto shrink-0">
+
+                        {/* Register Button */}
+                        <div className="relative">
+                            <motion.button
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => setShowRegisterOptions(v => !v)}
+                                style={{ transition: 'background-color 0.3s ease, box-shadow 0.3s ease', boxShadow: accent.btnShadow }}
+                                className={`w-full py-3.5 rounded-2xl font-bold text-sm ${accent.registerBg} ${accent.registerText} flex items-center justify-center gap-2`}
+                            >
+                                <span>Registrar transacción</span>
+                                <motion.div animate={{ rotate: showRegisterOptions ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                                    <ChevronRight size={16} className="rotate-90" />
+                                </motion.div>
+                            </motion.button>
+
+                            <AnimatePresence>
+                                {showRegisterOptions && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                                        transition={{ duration: 0.18 }}
+                                        className="absolute bottom-full mb-2 left-0 right-0 bg-white dark:bg-[#2C2C2C] border border-gray-100 dark:border-[#444] rounded-2xl overflow-hidden shadow-xl z-10"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <button
+                                            onClick={() => handleRegister('expense')}
+                                            className="w-full flex items-center gap-2 px-3 py-3 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                        >
+                                            <TrendingDown size={14} />
+                                            <span>Gasto</span>
+                                            <span className="ml-auto text-gray-400 font-normal">{formatDisplay(topValue)} {config.topSymbol}</span>
+                                        </button>
+                                        <div className="h-px bg-gray-100 dark:bg-[#444]" />
+                                        <button
+                                            onClick={() => handleRegister('income')}
+                                            className="w-full flex items-center gap-2 px-3 py-3 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                                        >
+                                            <TrendingUp size={14} />
+                                            <span>Ingreso</span>
+                                            <span className="ml-auto text-gray-400 font-normal">{formatDisplay(topValue)} {config.topSymbol}</span>
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
                         {/* Keypad */}
-                        <div className="grid grid-cols-3 gap-3 mt-auto shrink-0">
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-                                <Key key={num} value={num} onClick={() => handleCreateNumber(num.toString())} />
+                        <div className="grid grid-cols-3 gap-2.5">
+                            {['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', 'DEL'].map(key => (
+                                <motion.button
+                                    key={key}
+                                    whileTap={{ scale: 0.88 }}
+                                    onPointerDown={key === 'DEL' ? startDelete : undefined}
+                                    onPointerUp={key === 'DEL' ? stopDelete : undefined}
+                                    onPointerLeave={key === 'DEL' ? stopDelete : undefined}
+                                    onClick={key !== 'DEL' ? () => handleKey(key) : undefined}
+                                    className={`h-14 rounded-2xl flex items-center justify-center text-xl font-semibold select-none transition-all duration-300 ${key === 'DEL'
+                                        ? `${accent.delBg} ${accent.delText}`
+                                        : 'bg-gray-50 dark:bg-[#2C2C2C] text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#333]'
+                                        }`}
+                                >
+                                    {key === 'DEL' ? <Delete size={22} /> : key}
+                                </motion.button>
                             ))}
-                            <Key value="." label="." onClick={() => handleCreateNumber('.')} />
-                            <Key value="0" label="0" onClick={() => handleCreateNumber('0')} />
-                            <Key
-                                value="del"
-                                label={<Delete size={24} />}
-                                special
-                                onPointerDown={startDelete}
-                                onPointerUp={clearDeleteTimer}
-                                onPointerLeave={clearDeleteTimer}
-                            />
                         </div>
-
                     </div>
                 </motion.div>
             </motion.div>

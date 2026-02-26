@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Mail, Calendar, LogOut, UserCircle, Target, CreditCard, ChevronRight, TrendingUp, Edit2, Save, Globe, PiggyBank, Shield, Moon, Sun, Calculator, HelpCircle } from 'lucide-react';
+import { X, User, Mail, Calendar, LogOut, UserCircle, Target, CreditCard, ChevronRight, TrendingUp, Edit2, Save, Globe, PiggyBank, Shield, Moon, Sun, Calculator, HelpCircle, ArrowLeftRight } from 'lucide-react';
 import { User as UserType, authService } from '../services/authService';
+import { useCurrencyPreference } from '../hooks/useCurrencyPreference';
 
 interface ProfileDrawerProps {
   isOpen: boolean;
@@ -21,9 +22,11 @@ interface ProfileDrawerProps {
 
 const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, onLogout, onMissionsClick, onSubscriptionsClick, onFixedIncomeClick, onRatesClick, onCalculatorClick, onSavingsClick, isDarkMode, toggleTheme, onHelpClick }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPhoto, setEditPhoto] = useState('');
   const [isMobile, setIsMobile] = useState(false);
+  const [primaryCurrency, setPrimaryCurrency] = useCurrencyPreference(user?.id);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -253,6 +256,59 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
                           <ChevronRight size={18} />
                         </div>
                       </button>
+
+                      {/* ─── Moneda Principal (accordion) ─────────────────── */}
+                      <div className="overflow-hidden rounded-[20px] bg-white dark:bg-[#252525] border border-gray-100 dark:border-[#333] transition-all">
+                        <button
+                          onClick={() => setIsCurrencyOpen(!isCurrencyOpen)}
+                          className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-[#333] transition-all group"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <ArrowLeftRight size={20} />
+                          </div>
+                          <div className="text-left flex-1">
+                            <div className="font-bold text-gray-900 dark:text-white">Moneda Principal</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              Actualmente: <span className="font-semibold">{primaryCurrency === 'VES' ? 'Bolívar (Bs)' : 'Dólar (USD)'}</span>
+                            </div>
+                          </div>
+                          <div className={`text-gray-300 dark:text-gray-600 transition-transform ${isCurrencyOpen ? 'rotate-90' : ''}`}>
+                            <ChevronRight size={18} />
+                          </div>
+                        </button>
+
+                        <AnimatePresence>
+                          {isCurrencyOpen && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="px-4 pb-4"
+                            >
+                              <div className="flex bg-gray-100 dark:bg-[#1E1E1E] rounded-2xl p-1">
+                                <button
+                                  onClick={() => setPrimaryCurrency('USD')}
+                                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${primaryCurrency === 'USD'
+                                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                    }`}
+                                >
+                                  $ Dólar
+                                </button>
+                                <button
+                                  onClick={() => setPrimaryCurrency('VES')}
+                                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${primaryCurrency === 'VES'
+                                      ? 'bg-yellow-400 text-gray-900 shadow-md shadow-yellow-400/30'
+                                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                    }`}
+                                >
+                                  Bs Bolívar
+                                </button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
 
                       {/* Edit Profile Toggle */}
                       <div className="overflow-hidden rounded-[20px] bg-white dark:bg-[#252525] border border-gray-100 dark:border-[#333] transition-all">
