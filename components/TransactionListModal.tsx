@@ -41,7 +41,7 @@ const COLORS = ['#10B981', '#34D399', '#6EE7B7', '#A7F3D0', '#059669', '#047857'
 const CustomTooltip = ({ active, payload, label, currency }: any) => {
     if (active && payload && payload.length) {
         return (
-            <div className="bg-gray-900 text-white p-2 rounded-lg text-xs shadow-lg border border-gray-700">
+            <div className="bg-gray-900 text-white p-2 rounded-lg text-xs shadow-lg border border-gray-700 animate-fade-in">
                 <p className="font-bold">{label || payload[0].name}</p>
                 <p>
                     {currency === 'USD' ? '$' : 'Bs'}
@@ -286,7 +286,7 @@ const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onC
                                     </div>
                                 )}
 
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="100%" height="100%" className="animate-fade-in">
                                     {type === 'expense' ? (
                                         <LineChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: 10 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
@@ -297,7 +297,7 @@ const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onC
                                                 tickLine={false}
                                                 dy={10}
                                             />
-                                            <Tooltip content={<CustomTooltip currency={chartCurrency} />} />
+                                            <Tooltip content={<CustomTooltip currency={chartCurrency} />} isAnimationActive={false} cursor={false} />
                                             <Line
                                                 type="monotone"
                                                 dataKey="value"
@@ -331,7 +331,7 @@ const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onC
                                                     />
                                                 ))}
                                             </Pie>
-                                            <Tooltip content={<CustomTooltip currency={chartCurrency} />} />
+                                            <Tooltip content={<CustomTooltip currency={chartCurrency} />} isAnimationActive={false} cursor={false} />
                                         </PieChart>
                                     )}
                                 </ResponsiveContainer>

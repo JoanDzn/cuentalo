@@ -60,6 +60,7 @@ export interface RecurringTransaction {
   day: number; // 1-31
   type: TransactionType;
   category?: string;
+  period?: string; // format: YYYY-MM
 }
 
 export interface SavingsMission {

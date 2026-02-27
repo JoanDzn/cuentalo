@@ -30,52 +30,52 @@ const ACCENT: Record<RateType, {
     pill: string; registerBg: string; registerText: string;
 }> = {
     bcv: {
-        btn: 'bg-indigo-600 hover:bg-indigo-700',
-        btnText: 'text-white',
-        btnShadow: '0 4px 16px rgba(99,102,241,0.40)',
+        btn: 'bg-transparent border border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20',
+        btnText: 'text-indigo-600 dark:text-indigo-400',
+        btnShadow: 'none',
         border: 'border-indigo-400/50',
         symbol: 'text-indigo-500',
-        delBg: 'bg-indigo-100 dark:bg-indigo-900/30',
+        delBg: 'bg-transparent border border-indigo-500 dark:border-indigo-400',
         delText: 'text-indigo-600 dark:text-indigo-400',
         copyBg: 'bg-white dark:bg-[#1E1E1E]',
         copyText: 'text-indigo-500 dark:text-indigo-400',
         menuActive: 'text-indigo-600 dark:text-indigo-400',
         menuActiveBg: 'bg-indigo-50 dark:bg-indigo-900/30',
         pill: 'text-indigo-500 dark:text-indigo-400',
-        registerBg: 'bg-indigo-600 hover:bg-indigo-700',
-        registerText: 'text-white',
+        registerBg: 'bg-transparent border border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20',
+        registerText: 'text-indigo-600 dark:text-indigo-400',
     },
     euro: {
-        btn: 'bg-yellow-400 hover:bg-yellow-500',
-        btnText: 'text-yellow-900',
-        btnShadow: '0 4px 16px rgba(234,179,8,0.40)',
+        btn: 'bg-transparent border border-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20',
+        btnText: 'text-yellow-600 dark:text-yellow-400',
+        btnShadow: 'none',
         border: 'border-yellow-400/50',
         symbol: 'text-yellow-500',
-        delBg: 'bg-yellow-100 dark:bg-yellow-900/30',
+        delBg: 'bg-transparent border border-yellow-500 dark:border-yellow-400',
         delText: 'text-yellow-600 dark:text-yellow-400',
         copyBg: 'bg-white dark:bg-[#1E1E1E]',
         copyText: 'text-yellow-500 dark:text-yellow-400',
         menuActive: 'text-yellow-600 dark:text-yellow-400',
         menuActiveBg: 'bg-yellow-50 dark:bg-yellow-900/30',
         pill: 'text-yellow-500 dark:text-yellow-400',
-        registerBg: 'bg-yellow-400 hover:bg-yellow-500',
-        registerText: 'text-yellow-900',
+        registerBg: 'bg-transparent border border-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20',
+        registerText: 'text-yellow-600 dark:text-yellow-400',
     },
     usdt: {
-        btn: 'bg-emerald-500 hover:bg-emerald-600',
-        btnText: 'text-white',
-        btnShadow: '0 4px 16px rgba(16,185,129,0.40)',
+        btn: 'bg-transparent border border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20',
+        btnText: 'text-emerald-600 dark:text-emerald-400',
+        btnShadow: 'none',
         border: 'border-emerald-400/50',
         symbol: 'text-emerald-500',
-        delBg: 'bg-emerald-100 dark:bg-emerald-900/30',
+        delBg: 'bg-transparent border border-emerald-500 dark:border-emerald-400',
         delText: 'text-emerald-600 dark:text-emerald-400',
         copyBg: 'bg-white dark:bg-[#1E1E1E]',
         copyText: 'text-emerald-500 dark:text-emerald-400',
         menuActive: 'text-emerald-600 dark:text-emerald-400',
         menuActiveBg: 'bg-emerald-50 dark:bg-emerald-900/30',
         pill: 'text-emerald-500 dark:text-emerald-400',
-        registerBg: 'bg-emerald-500 hover:bg-emerald-600',
-        registerText: 'text-white',
+        registerBg: 'bg-transparent border border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20',
+        registerText: 'text-emerald-600 dark:text-emerald-400',
     },
 };
 
@@ -94,6 +94,7 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
     const [topValue, setTopValue] = useState('1');
     const [bottomValue, setBottomValue] = useState('');
     const [activeField, setActiveField] = useState<ActiveField>('top');
+    const [isFirstInput, setIsFirstInput] = useState(true);
 
     const [copiedTop, setCopiedTop] = useState(false);
     const [copiedBottom, setCopiedBottom] = useState(false);
@@ -147,22 +148,27 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
         setActiveField('top');
     };
 
-    // Swipe gestures on the rate pill — vertical (up = next, down = prev)
-    const handleSwipeStart = (clientY: number) => {
-        swipeStartX.current = clientY;
+    // Robust swipe handler utilizing Pointer Capture to avoid conflicts
+    const onSwipeStart = (e: React.PointerEvent<HTMLButtonElement>) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        swipeStartX.current = e.clientY;
         swipeMoved.current = false;
     };
-    const handleSwipeMove = (clientY: number) => {
+    const onSwipeMove = (e: React.PointerEvent<HTMLButtonElement>) => {
         if (swipeStartX.current === null) return;
-        const diff = clientY - swipeStartX.current;
-        if (Math.abs(diff) > 28 && !swipeMoved.current) {
+        const diff = e.clientY - swipeStartX.current;
+        // Threshold of 28px for a swipe
+        if (Math.abs(diff) > 28) {
             swipeMoved.current = true;
-            cycleRate(diff < 0 ? 1 : -1); // swipe up → next, swipe down → prev
-            swipeStartX.current = clientY;
+            cycleRate(diff < 0 ? 1 : -1);
+            swipeStartX.current = null; // consume
         }
     };
-    const handleSwipeEnd = () => { swipeStartX.current = null; };
-
+    const onSwipeEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
+        swipeStartX.current = null;
+        // Keep flag briefly true to prevent immediate click
+        setTimeout(() => { swipeMoved.current = false; }, 100);
+    };
     function formatNumber(n: number): string {
         if (isNaN(n) || !isFinite(n)) return '0';
         return parseFloat(n.toFixed(2)).toString().replace('.', ',');
@@ -177,15 +183,28 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
 
     const handleKey = useCallback((key: string) => {
         const setter = activeField === 'top' ? setTopValue : setBottomValue;
+
         setter(prev => {
-            if (key === 'DEL') { const n = prev.slice(0, -1); return n === '' ? '0' : n; }
-            if (key === 'CLEAR') return '0';
-            if (prev === '0' && key !== ',') return key;
-            if (key === ',' && prev.includes(',')) return prev;
-            if (prev.replace(',', '').replace(/\D/g, '').length >= 12) return prev;
-            return prev + key;
+            let nextVal = prev;
+            if (key === 'DEL') {
+                const n = prev.slice(0, -1);
+                nextVal = n === '' ? '0' : n;
+            } else if (key === 'CLEAR') {
+                nextVal = '0';
+            } else if ((isFirstInput || prev === '0') && key !== ',') {
+                nextVal = key;
+            } else {
+                if (key === ',' && prev.includes(',')) return prev;
+                if (prev.replace(',', '').replace(/\D/g, '').length >= 12) return prev;
+                nextVal = prev + key;
+            }
+            return nextVal;
         });
-    }, [activeField]);
+
+        if (isFirstInput) {
+            setIsFirstInput(false);
+        }
+    }, [activeField, isFirstInput]);
 
     const startDelete = () => {
         handleKey('DEL');
@@ -282,11 +301,13 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
                                     key={selectedRate}
                                     style={{ boxShadow: accent.btnShadow, transition: 'background-color 0.3s ease, box-shadow 0.3s ease' }}
                                     className={`w-full flex items-center justify-center ${accent.btn} ${accent.btnText} font-bold text-sm py-3 rounded-2xl select-none`}
-                                    onClick={() => setShowRateMenu(v => !v)}
-                                    onPointerDown={e => handleSwipeStart(e.clientY)}
-                                    onPointerMove={e => handleSwipeMove(e.clientY)}
-                                    onPointerUp={handleSwipeEnd}
-                                    onPointerLeave={handleSwipeEnd}
+                                    onClick={(e) => {
+                                        if (!swipeMoved.current) setShowRateMenu(v => !v);
+                                    }}
+                                    onPointerDown={onSwipeStart}
+                                    onPointerMove={onSwipeMove}
+                                    onPointerUp={onSwipeEnd}
+                                    onPointerCancel={onSwipeEnd}
                                 >
                                     <AnimatePresence mode="wait">
                                         <motion.span
@@ -310,7 +331,7 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
                                         key={r}
                                         onClick={() => { setSelectedRate(r); setActiveField('top'); setShowRateMenu(false); }}
                                         className={`w-1.5 rounded-full transition-all duration-300 ${selectedRate === r
-                                            ? `h-4 ${accent.delBg.split(' ')[0]} opacity-100`
+                                            ? 'h-4 bg-gray-900 dark:bg-white'
                                             : 'h-1.5 bg-gray-300 dark:bg-gray-600 opacity-60'
                                             }`}
                                     />
@@ -350,7 +371,7 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
                         <div className="rounded-2xl bg-gray-50 dark:bg-[#2a2a2a] overflow-hidden">
                             {/* Top Field */}
                             <button
-                                onClick={() => setActiveField('top')}
+                                onClick={() => { setActiveField('top'); setIsFirstInput(true); }}
                                 className="w-full flex items-center px-4 py-5 border-b border-gray-200 dark:border-[#3a3a3a] transition-all duration-300"
                             >
                                 <span className={`text-xl font-bold w-8 text-left shrink-0 transition-colors duration-300 ${activeField === 'top' ? accent.symbol : 'text-gray-400 dark:text-gray-500'
@@ -377,7 +398,7 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
 
                             {/* Bottom Field */}
                             <button
-                                onClick={() => setActiveField('bottom')}
+                                onClick={() => { setActiveField('bottom'); setIsFirstInput(true); }}
                                 className="w-full flex items-center px-4 py-5"
                             >
                                 <span className={`text-xl font-bold w-8 text-left shrink-0 transition-colors duration-300 ${activeField === 'bottom' ? accent.symbol : 'text-gray-400 dark:text-gray-500'

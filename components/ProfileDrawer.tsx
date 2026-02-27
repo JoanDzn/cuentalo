@@ -152,8 +152,8 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
                           <Target size={20} />
                         </div>
                         <div className="text-left flex-1">
-                          <div className="font-bold text-gray-900 dark:text-white">Objetivos</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">Metas de ahorro financiero</div>
+                          <div className="font-bold text-gray-900 dark:text-white">Presupuesto</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Planificador de gastos mensuales</div>
                         </div>
                         <div className="text-gray-300 dark:text-gray-600">
                           <ChevronRight size={18} />
@@ -289,8 +289,8 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
                                 <button
                                   onClick={() => setPrimaryCurrency('USD')}
                                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${primaryCurrency === 'USD'
-                                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
-                                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                                     }`}
                                 >
                                   $ Dólar
@@ -298,8 +298,8 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ isOpen, onClose, user, on
                                 <button
                                   onClick={() => setPrimaryCurrency('VES')}
                                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${primaryCurrency === 'VES'
-                                      ? 'bg-yellow-400 text-gray-900 shadow-md shadow-yellow-400/30'
-                                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                    ? 'bg-yellow-400 text-gray-900 shadow-md shadow-yellow-400/30'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                                     }`}
                                 >
                                   Bs Bolívar

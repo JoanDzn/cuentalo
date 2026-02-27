@@ -5,7 +5,7 @@ import Dashboard from '../components/Dashboard';
 import VoiceInput from '../components/VoiceInput';
 import EditModal from '../components/EditModal';
 import ProfileDrawer from '../components/ProfileDrawer';
-import SavingsMissions from '../components/SavingsMissions';
+import BudgetManager from '../components/BudgetManager';
 import SubscriptionsModal from '../components/SubscriptionsModal';
 import SavingsModal from '../components/SavingsModal';
 import { Transaction, ExpenseAnalysis, RateData, RecurringTransaction, SavingsMission } from '../types';
@@ -458,9 +458,14 @@ const DashboardPage: React.FC = () => {
               className="w-full h-full bg-[#F5F5F5] dark:bg-[#121212]"
             >
               <div className="w-full h-full bg-[#F5F5F5]/90 dark:bg-[#121212]/90 backdrop-blur-md">
-                <SavingsMissions
+                <BudgetManager
                   onBack={() => setShowMissions(false)}
                   transactions={transactions}
+                  recurringItems={recurringTransactions}
+                  onUpdateRecurring={(items) => {
+                    setRecurringTransactions(items);
+                    if (user) dbService.updateUserRecurringTransactions(user.id, items);
+                  }}
                   missions={missions}
                   onUpdateMission={handleUpdateMission}
                 />
