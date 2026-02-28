@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Plus, DollarSign, Target, PieChart as PieChartIcon, Edit2, Check, X, TrendingDown, ArrowRight, ArrowLeft, Briefcase, Laptop, TrendingUp, Home, ShoppingBag, List, ShoppingCart, Car, Heart, Book, Film, PiggyBank, ArrowDown, ArrowUp, Trash2, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, DollarSign, Target, PieChart as PieChartIcon, Edit2, Check, X, TrendingDown, ArrowRight, ArrowLeft, Briefcase, Laptop, TrendingUp, Home, ShoppingBag, List, ShoppingCart, Car, Heart, Book, Film, PiggyBank, ArrowDown, ArrowUp, Trash2, Sparkles } from 'lucide-react';
 import { Transaction, RecurringTransaction, SavingsMission } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
@@ -211,21 +211,21 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({
   };
 
   const renderMonthBar = () => (
-    <div className="w-full flex justify-between items-center bg-[#1E1E1E] rounded-full p-2 mb-8">
+    <div className="flex items-center justify-between bg-white dark:bg-[#1E1E1E] rounded-2xl py-3 px-4 mb-8 border border-gray-100 dark:border-[#333] shadow-sm">
       <button
         onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}
-        className="w-10 h-10 rounded-2xl bg-[#2A2A2A] flex items-center justify-center text-white hover:bg-[#333] transition-colors"
+        className="p-2 text-gray-600 dark:text-white hover:opacity-75 transition-opacity disabled:opacity-30"
       >
-        <ChevronLeft size={16} />
+        <ChevronLeft size={20} />
       </button>
-      <span className="font-bold text-white text-base tracking-wide flex-1 text-center font-sans">
+      <span className="font-bold text-gray-900 dark:text-white text-base tracking-wide flex-1 text-center font-sans">
         {monthLabel}
       </span>
       <button
         onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}
-        className="w-10 h-10 rounded-2xl bg-[#2A2A2A] flex items-center justify-center text-white hover:bg-[#333] transition-colors"
+        className="p-2 text-gray-600 dark:text-white hover:opacity-75 transition-opacity disabled:opacity-30"
       >
-        <ChevronLeft className="rotate-180" size={16} />
+        <ChevronRight size={20} />
       </button>
     </div>
   );

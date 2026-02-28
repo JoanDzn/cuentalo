@@ -467,7 +467,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
                 if (!isDragging.current) startListening();
               }}
               id="voice-input-btn"
-              className="w-16 h-16 bg-white/30 dark:bg-white/10 backdrop-blur-xl border border-white/50 dark:border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] text-gray-800 dark:text-white rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-50 pointer-events-auto transition-colors"
+              className="w-16 h-16 bg-white/50 dark:bg-[#111111]/85 backdrop-blur-[24px] border border-gray-200/50 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-gray-800 dark:text-white rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-50 pointer-events-auto transition-colors"
             >
               <div className="relative w-full h-full flex items-center justify-center">
                 <motion.div style={{ opacity: centerOpacity, position: 'absolute' }}><Mic size={28} /></motion.div>

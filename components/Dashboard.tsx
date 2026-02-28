@@ -141,15 +141,15 @@ const QuickMenu = ({ onBudget, onIncome, onExpense, onSavings, onRates }: { onBu
     const [isOpen, setIsOpen] = useState(false);
 
     const items = [
-        { icon: <Target size={18} />, action: onBudget, color: 'text-blue-400', bg: 'bg-blue-500/20' },
-        { icon: <TrendingUp size={18} />, action: onIncome, color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
-        { icon: <CreditCard size={18} />, action: onExpense, color: 'text-pink-400', bg: 'bg-pink-500/20' },
-        { icon: <PiggyBank size={18} />, action: onSavings, color: 'text-indigo-400', bg: 'bg-indigo-500/20' },
-        { icon: <Globe size={18} />, action: onRates, color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
+        { icon: <Target size={16} />, action: onBudget, color: 'text-white', bg: 'bg-blue-500/80' },
+        { icon: <TrendingUp size={16} />, action: onIncome, color: 'text-white', bg: 'bg-emerald-500/80' },
+        { icon: <CreditCard size={16} />, action: onExpense, color: 'text-white', bg: 'bg-pink-500/80' },
+        { icon: <PiggyBank size={16} />, action: onSavings, color: 'text-white', bg: 'bg-indigo-500/80' },
+        { icon: <Globe size={16} />, action: onRates, color: 'text-white', bg: 'bg-yellow-500/80' },
     ];
 
     return (
-        <div className="absolute bottom-8 right-8 z-[40] flex flex-col items-center gap-2.5 pointer-events-auto">
+        <div className="absolute bottom-12 right-8 z-[40] flex flex-col items-center gap-1.5 pointer-events-auto">
             {/* Click outside overlay */}
             <AnimatePresence>
                 {isOpen && (
@@ -166,7 +166,7 @@ const QuickMenu = ({ onBudget, onIncome, onExpense, onSavings, onRates }: { onBu
             {/* Icons Stack */}
             <AnimatePresence>
                 {isOpen && (
-                    <div className="flex flex-col gap-2.5 mb-1">
+                    <div className="flex flex-col gap-1.5 mb-1">
                         {items.map((item, i) => (
                             <motion.button
                                 key={i}
@@ -180,7 +180,7 @@ const QuickMenu = ({ onBudget, onIncome, onExpense, onSavings, onRates }: { onBu
                                     damping: 25
                                 }}
                                 onClick={() => { item.action(); setIsOpen(false); }}
-                                className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${item.bg} ${item.color} hover:scale-110 active:scale-95 transition-all`}
+                                className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${item.bg} ${item.color} hover:scale-110 active:scale-95 transition-all`}
                             >
                                 {item.icon}
                             </motion.button>
@@ -199,7 +199,7 @@ const QuickMenu = ({ onBudget, onIncome, onExpense, onSavings, onRates }: { onBu
                 whileTap={{ scale: 0.8 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-11 h-11 flex items-center justify-center text-gray-800/60 dark:text-white/60 hover:text-gray-900 dark:hover:text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)] dark:drop-shadow-[0_4px_12px_rgba(255,255,255,0.1)] transition-colors"
+                className="w-11 h-11 flex items-center justify-center text-gray-900 dark:text-white hover:opacity-80 drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)] dark:drop-shadow-[0_4px_12px_rgba(255,255,255,0.1)] transition-opacity"
             >
                 <ChevronUp size={26} strokeWidth={3} />
             </motion.button>
@@ -348,7 +348,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                     <AnimatePresence initial={false} mode="wait">
                         {viewMode === 'recent' ? (
                             <motion.div key="recent" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="absolute inset-0">
-                                <div className="h-full overflow-y-auto scrollable-list pt-6 pb-32">
+                                {/* Fades for Recent */}
+                                <div className="absolute top-0 left-0 right-0 h-12 bg-gradient-to-b from-white dark:from-[#111] to-transparent pointer-events-none z-10" />
+                                <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-white dark:from-[#111] to-transparent pointer-events-none z-10" />
+
+                                <div className="h-full overflow-y-auto scrollable-list pt-6 pb-28 relative z-0">
                                     <div className="mb-3 text-center">
                                         <div className="flex items-center justify-center gap-1 mb-1">
                                             <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Balance Total</p>
@@ -435,7 +439,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
 
                                     <div className="space-y-3 px-1">
                                         {loading ? (
-                                            <div className="flex justify-center py-10"><Loader2 className="animate-spin text-gray-400" /></div>
+                                            <div className="flex justify-center items-center gap-1.5 py-10">
+                                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" style={{ animationDelay: '150ms' }} />
+                                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" style={{ animationDelay: '300ms' }} />
+                                            </div>
                                         ) : sortedTransactions.length === 0 ? (
                                             <p className="text-center py-10 text-gray-400">Sin movimientos.</p>
                                         ) : (
@@ -465,39 +473,79 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                 </div>
                             </motion.div>
                         ) : (
-                            <motion.div key="history" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }} className="absolute inset-0 flex flex-col pt-6 pb-32">
-                                <div className="flex items-center justify-between bg-white dark:bg-[#1E1E1E] rounded-2xl py-3 px-4 mb-4 border border-gray-100 dark:border-[#333] shadow-sm">
+                            <motion.div key="history" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }} className="absolute inset-0 flex flex-col pt-6 pb-2">
+                                <div className="flex items-center justify-between bg-white dark:bg-[#1E1E1E] rounded-2xl py-3 px-4 mb-4 border border-gray-100 dark:border-[#333] shadow-sm relative z-10">
                                     <button onClick={() => selectedMonthIndex < allMonths.length - 1 && setSelectedMonthIndex(selectedMonthIndex + 1)} disabled={selectedMonthIndex >= allMonths.length - 1} className="p-2 disabled:opacity-30"><ChevronLeft size={20} /></button>
                                     <span className="font-bold text-gray-900 dark:text-white">{formatMonth(allMonths[selectedMonthIndex])}</span>
                                     <button onClick={() => selectedMonthIndex > 0 && setSelectedMonthIndex(selectedMonthIndex - 1)} disabled={selectedMonthIndex <= 0} className="p-2 disabled:opacity-30"><ChevronRight size={20} /></button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto scrollable-list space-y-3">
-                                    {(() => {
-                                        const mk = allMonths[selectedMonthIndex];
-                                        const md = monthlyData.find(([k]) => k === mk)?.[1] || { transactions: [] };
-                                        return md.transactions.length === 0 ? (
-                                            <p className="text-center py-20 text-gray-500">No hay movimientos.</p>
-                                        ) : md.transactions.sort((a, b) => getTransactionTimestamp(b) - getTransactionTimestamp(a)).map(t => (
-                                            <div key={t.id} onClick={() => onEditTransaction(t)} className="bg-white dark:bg-[#1a1a1a] p-3 rounded-2xl flex items-center justify-between cursor-pointer border border-transparent hover:border-gray-100 dark:hover:border-white/10 hover:shadow-md hover:bg-gray-50/50 dark:hover:bg-white/5 transition-all duration-500">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${t.category === 'Ahorro'
-                                                        ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400'
-                                                        : t.type === 'income'
-                                                            ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                                                            : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
-                                                        }`}>
-                                                        {React.cloneElement(getCategoryIcon(t.category) as React.ReactElement<any>, { size: 16 })}
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-bold text-sm text-gray-900 dark:text-white capitalize">{t.description}</div>
-                                                        <div className="text-[10px] text-gray-400">{formatDate(t.date)}</div>
-                                                    </div>
+
+                                {(() => {
+                                    const mk = allMonths[selectedMonthIndex];
+                                    const md = monthlyData.find(([k]) => k === mk)?.[1] || { transactions: [] };
+
+                                    const monthIncome = md.transactions.map(t => t.type === 'income' ? Number(t.amount) : 0).reduce((a, b) => a + b, 0);
+                                    const monthExpense = md.transactions.map(t => t.type === 'expense' ? Number(t.amount) : 0).reduce((a, b) => a + b, 0);
+                                    const monthNet = monthIncome - monthExpense;
+
+                                    return (
+                                        <>
+                                            <div className="flex bg-white dark:bg-[#1E1E1E] rounded-2xl p-4 mb-4 justify-between items-center shadow-sm border border-gray-100 dark:border-[#333] relative z-10">
+                                                <div className="flex flex-col items-center w-1/4">
+                                                    <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-1">Movs.</span>
+                                                    <span className="text-gray-900 dark:text-gray-300 font-bold text-sm truncate tracking-tight">{md.transactions.length}</span>
                                                 </div>
-                                                <div className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-600' : 'text-gray-900 dark:text-white'}`}>{t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                                <div className="w-px h-8 bg-gray-100 dark:bg-[#333]" />
+                                                <div className="flex flex-col items-center w-1/4">
+                                                    <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-1">Ingresos</span>
+                                                    <span className="text-emerald-500 font-bold text-sm truncate tracking-tight">+${monthIncome.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                                                </div>
+                                                <div className="w-px h-8 bg-gray-100 dark:bg-[#333]" />
+                                                <div className="flex flex-col items-center w-1/4">
+                                                    <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-1">Gastos</span>
+                                                    <span className="text-red-500 font-bold text-sm truncate tracking-tight">-${monthExpense.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                                                </div>
+                                                <div className="w-px h-8 bg-gray-100 dark:bg-[#333]" />
+                                                <div className="flex flex-col items-center w-1/4">
+                                                    <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-1">Neto</span>
+                                                    <span className={`font-bold text-sm truncate tracking-tight ${monthNet >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
+                                                        {monthNet < 0 ? '-' : ''}${Math.abs(monthNet).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        ));
-                                    })()}
-                                </div>
+
+                                            <div className="flex-1 relative min-h-0 -mx-4 px-4">
+                                                {/* Fades for History */}
+                                                <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-white dark:from-[#111] to-transparent pointer-events-none z-10" />
+                                                <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-white dark:from-[#111] to-transparent pointer-events-none z-10" />
+
+                                                <div className="h-full overflow-y-auto scrollable-list space-y-3 pt-2 pb-28 relative z-0">
+                                                    {md.transactions.length === 0 ? (
+                                                        <p className="text-center py-20 text-gray-500">No hay movimientos.</p>
+                                                    ) : md.transactions.sort((a, b) => getTransactionTimestamp(b) - getTransactionTimestamp(a)).map(t => (
+                                                        <div key={t.id} onClick={() => onEditTransaction(t)} className="bg-white dark:bg-[#1a1a1a] p-3 rounded-2xl flex items-center justify-between cursor-pointer border border-transparent hover:border-gray-100 dark:hover:border-white/10 hover:shadow-md hover:bg-gray-50/50 dark:hover:bg-white/5 transition-all duration-500">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${t.category === 'Ahorro'
+                                                                    ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400'
+                                                                    : t.type === 'income'
+                                                                        ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                                                                        : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
+                                                                    }`}>
+                                                                    {React.cloneElement(getCategoryIcon(t.category) as React.ReactElement<any>, { size: 16 })}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-bold text-sm text-gray-900 dark:text-white capitalize">{t.description}</div>
+                                                                    <div className="text-[10px] text-gray-400">{formatDate(t.date)}</div>
+                                                                </div>
+                                                            </div>
+                                                            <div className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-600' : 'text-gray-900 dark:text-white'}`}>{t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -509,7 +557,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                     onSavings={onSavingsClick}
                     onRates={onRatesClick}
                 />
-            </div>
+            </div >
 
             <TransactionListModal
                 isOpen={modalOpen}
