@@ -41,12 +41,11 @@ Este documento detalla las áreas de mejora, nuevas funcionalidades sugeridas y 
 
 ## 🤖 3. Inteligencia Artificial Avanzada (Gemini) ✨
 
+### **Categorización Automática & Reconocimiento de Pagos** ✅ IMPLEMENTADO (PARCIAL)
+*   **Estado:** La IA ahora reconoce comandos de pago ("pagué el internet") y extrae montos automáticamente del presupuesto si no se especifican. Reconoce sinónimos (alquiler, residencial, vivienda).
+
 ### **Análisis de Salud Financiera** 🔴 PENDIENTE (MEDIA PRIORIDAD)
 *   **Función:** "Modo Consejero". La IA analiza el gasto mensual y sugiere recortes basados en patrones históricos.
-*   **Detalle:** "Has gastado un 15% más en café que el mes pasado, ¿quieres revisar tu meta de ahorro?".
-
-### **Categorización Automática Dinámica** 🔴 PENDIENTE
-*   **Función:** La IA reconoce comercios por nombre (ej: "Farmatodo" -> "Salud") sin intervención del usuario.
 
 ### **Detección de Anomalías** 🔴 PENDIENTE
 *   **Función:** Notificar si se registra un gasto inusualmente alto para el perfil del usuario.
@@ -55,11 +54,14 @@ Este documento detalla las áreas de mejora, nuevas funcionalidades sugeridas y 
 
 ## 📱 4. Experiencia de Usuario (UX/UI) 💎
 
+### **Onboarding & Balance Inicial** ✅ IMPLEMENTADO
+*   **Estado:** Flujo de bienvenida premium con selección de moneda (USD/VES) y captura de saldos bancarios iniciales para nuevos usuarios.
+
+### **Presupuestos y Balance Acumulativo** ✅ IMPLEMENTADO
+*   **Estado:** Panel de presupuestos basado en ingresos reales. Los ahorros y remanentes pasan de un mes a otro automáticamente (Carry-over).
+
 ### **PWA y Modo Offline** 🔴 PENDIENTE (ALTA PRIORIDAD)
 *   **Meta:** La app debe funcionar sin internet. Registrar gastos en el bus/metro y sincronizar al detectar Wi-Fi.
-
-### **Presupuestos y Alertas** 🔴 PENDIENTE
-*   **Meta:** Definir techos de gasto por categoría con notificaciones visuales de proximidad.
 
 ### **Exportación y Reportes** 🔴 PENDIENTE
 *   **Acción:** Generador de PDFs con gráficas mensuales para impresión o contabilidad.
@@ -70,8 +72,8 @@ Este documento detalla las áreas de mejora, nuevas funcionalidades sugeridas y 
 
 1.  **CRÍTICO:** **Modo Offline (PWA)** - Vital para una herramienta de uso diario fuera de casa.
 2.  **ALTA:** **Observabilidad (Sentry/SaaS)** - Para asegurar estabilidad post-lanzamiento.
-3.  **MEDIA:** **Presupuestos por Categoría** - La primera función de "valor agregado" para el usuario.
-4.  **MEDIA:** **Análisis de Patrones con IA** - La "magia" que diferencia a Cuéntalo de la competencia.
+3.  **ALTA:** **Análisis de Patrones con IA** - Implementar el "Modo Consejero" para dar mejores recomendaciones.
+4.  **MEDIA:** **Exportación de Datos** - Permitir al usuario descargar sus movimientos en PDF/Excel.
 
 ---
-*Ultima actualización: 16 de Febrero, 2026*
+*Ultima actualización: 28 de Febrero, 2026*

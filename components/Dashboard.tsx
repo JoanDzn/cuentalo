@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Transaction, TransactionType, RateData } from '../types';
-import { ArrowLeftRight, ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard, List, Calculator, Loader2 } from 'lucide-react';
+import { ArrowLeftRight, ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, Moon, Sun, Edit2, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Info, Globe, TrendingUp, Coins, User, Target, CreditCard, List, Calculator, Loader2, Plus, LayoutGrid, X, PiggyBank } from 'lucide-react';
 import TransactionListModal from './TransactionListModal';
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference';
 
@@ -18,6 +18,7 @@ interface DashboardProps {
     onMissionsClick: () => void;
     onSavingsClick: () => void;
     onCalculatorClick: () => void;
+    onRatesClick: () => void;
     loading?: boolean;
     userId?: string;
 }
@@ -136,12 +137,82 @@ const formatDate = (dateStep: string) => {
     return `${day}/${month}/${year}`;
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onSubscriptionsClick, onFixedIncomeClick, onMissionsClick, onSavingsClick, onCalculatorClick, loading = false, userId }) => {
+const QuickMenu = ({ onBudget, onIncome, onExpense, onSavings, onRates }: { onBudget: () => void, onIncome: () => void, onExpense: () => void, onSavings: () => void, onRates: () => void }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    const items = [
+        { icon: <Target size={18} />, action: onBudget, color: 'text-blue-400', bg: 'bg-blue-500/20' },
+        { icon: <TrendingUp size={18} />, action: onIncome, color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
+        { icon: <CreditCard size={18} />, action: onExpense, color: 'text-pink-400', bg: 'bg-pink-500/20' },
+        { icon: <PiggyBank size={18} />, action: onSavings, color: 'text-indigo-400', bg: 'bg-indigo-500/20' },
+        { icon: <Globe size={18} />, action: onRates, color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
+    ];
+
+    return (
+        <div className="absolute bottom-8 right-8 z-[40] flex flex-col items-center gap-2.5 pointer-events-auto">
+            {/* Click outside overlay */}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsOpen(false)}
+                        className="fixed inset-0 z-[-1] bg-black/0"
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Icons Stack */}
+            <AnimatePresence>
+                {isOpen && (
+                    <div className="flex flex-col gap-2.5 mb-1">
+                        {items.map((item, i) => (
+                            <motion.button
+                                key={i}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{
+                                    delay: (items.length - 1 - i) * 0.03,
+                                    type: 'spring',
+                                    stiffness: 400,
+                                    damping: 25
+                                }}
+                                onClick={() => { item.action(); setIsOpen(false); }}
+                                className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${item.bg} ${item.color} hover:scale-110 active:scale-95 transition-all`}
+                            >
+                                {item.icon}
+                            </motion.button>
+                        ))}
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Main Trigger Button */}
+            <motion.button
+                initial={false}
+                animate={{
+                    rotate: isOpen ? 180 : 0,
+                    scale: isOpen ? 0.9 : 1
+                }}
+                whileTap={{ scale: 0.8 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-11 h-11 flex items-center justify-center text-gray-800/60 dark:text-white/60 hover:text-gray-900 dark:hover:text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)] dark:drop-shadow-[0_4px_12px_rgba(255,255,255,0.1)] transition-colors"
+            >
+                <ChevronUp size={26} strokeWidth={3} />
+            </motion.button>
+        </div>
+    );
+};
+
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, isDarkMode, toggleTheme, rates, onProfileClick, onSubscriptionsClick, onFixedIncomeClick, onMissionsClick, onSavingsClick, onCalculatorClick, onRatesClick, loading = false, userId }) => {
     const [viewMode, setViewMode] = useState<'recent' | 'history'>('recent');
     const [prevViewMode, setPrevViewMode] = useState<'recent' | 'history'>('recent');
     const changeView = (mode: 'recent' | 'history') => { setPrevViewMode(viewMode); setViewMode(mode); };
 
-    // Tab swipe — pointer events on root div, no setPointerCapture needed
+    // Tab swipe
     const tabSwipeStart = useRef<{ x: number; y: number } | null>(null);
     const swipeContainerRef = useRef<HTMLDivElement>(null);
     const onRootPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -159,10 +230,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
     };
     const viewModeRef = useRef(viewMode);
     useEffect(() => { viewModeRef.current = viewMode; }, [viewMode]);
-    const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
     const [selectedMonthIndex, setSelectedMonthIndex] = useState<number>(0);
-    const [showAllRates, setShowAllRates] = useState(false);
-    const [hasMounted, setHasMounted] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalType, setModalType] = useState<TransactionType | 'all'>('expense');
 
@@ -170,137 +238,67 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
     const [primaryCurrency] = useCurrencyPreference(userId);
     const isVES = primaryCurrency === 'VES';
 
-    // Set mounted flag after initial render
-    React.useEffect(() => {
-        setHasMounted(true);
-    }, []);
-
-    // Sort transactions globally for consistent display (Newest First)
-    // Use createdAt for precise time-based ordering, fallback to date field
+    // Sort transactions globally
     const getTransactionTimestamp = (t: Transaction) => {
-        // Priority 1: Use createdAt if available (includes time)
         if (t.createdAt) {
             const ts = new Date(t.createdAt).getTime();
             if (!isNaN(ts)) return ts;
         }
-
-        // Priority 2: Parse date field
         if (!t.date) return 0;
         const d = new Date(t.date);
         if (!isNaN(d.getTime())) return d.getTime();
-
-        // Priority 3: Try DD/MM/YYYY format
-        const parts = t.date.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-        if (parts) {
-            return new Date(parseInt(parts[3]), parseInt(parts[2]) - 1, parseInt(parts[1])).getTime();
-        }
         return 0;
     };
 
     const sortedTransactions = useMemo(() => {
-        return [...transactions].sort((a, b) => {
-            // Descending: Newest (Higher TS) first
-            return getTransactionTimestamp(b) - getTransactionTimestamp(a);
-        });
+        return [...transactions].sort((a, b) => getTransactionTimestamp(b) - getTransactionTimestamp(a));
     }, [transactions]);
 
-    // Current Month Balance Calculation
     const now = new Date();
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const currentMonthTransactions = sortedTransactions.filter(t => {
-        // Ensure accurate filtering even with different date formats
-        if (t.date.includes('T')) return t.date.startsWith(currentMonthKey);
-        // Fallback for simple dates
-        return t.date.startsWith(currentMonthKey);
-    });
+    const currentMonthTransactions = sortedTransactions.filter(t => t.date.startsWith(currentMonthKey));
 
-    // ── Balance helpers ──────────────────────────────────────────────────────
-    // For VES users: sum originalAmounts in Bs directly → no fluctuation.
-    // For USD users: sum amount (USD) as before.
-    const vesAmount = (t: Transaction): number => {
-        if (t.originalCurrency === 'VES' && t.originalAmount != null) return t.originalAmount;
-        // USD transaction → convert to Bs at current BCV rate
-        return t.amount * rates.bcv;
-    };
-    const usdAmount = (t: Transaction): number => t.amount;
-
+    // Balance helpers
+    const vesAmount = (t: Transaction) => (t.originalCurrency === 'VES' && t.originalAmount != null) ? t.originalAmount : t.amount * rates.bcv;
+    const usdAmount = (t: Transaction) => t.amount;
     const getAmount = (t: Transaction) => isVES ? vesAmount(t) : usdAmount(t);
 
-    // Current month sums in primary currency
-    const totalIncome = currentMonthTransactions.reduce((acc, t) => {
+    const cumulativeIncome = sortedTransactions.reduce((acc, t) => {
         if (t.type === 'income') return acc + getAmount(t);
         if (t.type === 'expense' && (t.category === 'Ahorro' || t.category === 'Savings')) return acc - getAmount(t);
         return acc;
     }, 0);
 
-    const totalExpense = currentMonthTransactions.reduce((acc, t) => {
+    const cumulativeExpense = sortedTransactions.reduce((acc, t) => {
         if (t.type === 'expense' && t.category !== 'Ahorro' && t.category !== 'Savings') return acc + getAmount(t);
         return acc;
     }, 0);
 
-    const balancePrimary = totalIncome - totalExpense; // in primary currency
-
-    // Secondary display (the other currency)
+    const balancePrimary = cumulativeIncome - cumulativeExpense;
     const balanceSecondary = isVES ? balancePrimary / rates.bcv : balancePrimary * rates.bcv;
 
-    // Savings Balance in primary currency
-    const totalSavingsBalance = sortedTransactions
-        .filter(t => t.category === 'Ahorro' || t.category.toLowerCase().includes('ahorro'))
-        .reduce((acc, curr) => acc + (curr.type === 'expense' ? getAmount(curr) : -getAmount(curr)), 0);
-
-    // Monthly Grouping Calculation
     const monthlyData = useMemo(() => {
         const groups: Record<string, { income: number; expense: number; balance: number; transactions: Transaction[] }> = {};
-
         sortedTransactions.forEach(t => {
-            // Create key YYYY-MM
             const monthKey = t.date.substring(0, 7);
-
-            if (!groups[monthKey]) {
-                groups[monthKey] = { income: 0, expense: 0, balance: 0, transactions: [] };
-            }
-
-            // Add transaction to the specific month list
+            if (!groups[monthKey]) groups[monthKey] = { income: 0, expense: 0, balance: 0, transactions: [] };
             groups[monthKey].transactions.push(t);
-
-            if (t.type === 'income') {
-                groups[monthKey].income += t.amount;
-            } else {
-                // Expense
-                if (t.category === 'Ahorro' || t.category === 'Savings') {
-                    // Savings subtract from Income
-                    groups[monthKey].income -= t.amount;
-                } else {
-                    // Regular expenses increase Expense
-                    groups[monthKey].expense += t.amount;
-                }
-            }
+            if (t.type === 'income') groups[monthKey].income += t.amount;
+            else if (t.category === 'Ahorro' || t.category === 'Savings') groups[monthKey].income -= t.amount;
+            else groups[monthKey].expense += t.amount;
             groups[monthKey].balance = groups[monthKey].income - groups[monthKey].expense;
         });
-
-        // Sort descending (newest months first)
         return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
     }, [sortedTransactions]);
 
-    const formatMonth = (monthKey: string) => {
-        const [year, month] = monthKey.split('-');
-        const date = new Date(parseInt(year), parseInt(month) - 1);
-        const str = date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-        return str.charAt(0).toUpperCase() + str.slice(1);
-    };
-
-    // Rango completo de meses: desde 12 meses antes del más antiguo con movimientos hasta el mes actual
     const allMonths = useMemo(() => {
         const now = new Date();
         const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        // Start point: current month
         const [ny, nm] = currentKey.split('-').map(Number);
-        // End point: 12 months before the oldest transaction month (or 24 months back if no data)
         let ey = ny, em = nm;
         if (monthlyData.length > 0) {
             const oldest = monthlyData[monthlyData.length - 1][0];
             const [oy, om] = oldest.split('-').map(Number);
-            // Go 12 months before oldest
             em = om - 12; ey = oy;
             while (em <= 0) { em += 12; ey--; }
         } else {
@@ -314,358 +312,205 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
             m--;
             if (m === 0) { m = 12; y--; }
         }
-        return keys; // newest-first
+        return keys;
     }, [monthlyData]);
 
-    const toggleMonthExpansion = (monthKey: string) => {
-        setExpandedMonth(expandedMonth === monthKey ? null : monthKey);
+    const formatMonth = (monthKey: string) => {
+        const [year, month] = monthKey.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1);
+        const str = date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        return str.charAt(0).toUpperCase() + str.slice(1);
     };
 
     return (
         <>
             <div
                 ref={swipeContainerRef}
-                className="w-full max-w-2xl mx-auto h-full flex flex-col p-6 font-sans"
+                className="w-full max-w-2xl mx-auto h-full flex flex-col p-6 font-sans relative"
                 onPointerDown={onRootPointerDown}
                 onPointerUp={onRootPointerUp}
             >
-
-                {/* Header - Centered Logo */}
                 <div className="relative flex flex-col items-center justify-center mb-6 pt-4 text-center">
                     <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white lowercase">cuentalo</h1>
-
-                    {/* Absolute positioned buttons to keep logo perfectly centered */}
                     <div className="absolute top-4 right-0 flex items-center gap-2">
-                        <button
-                            id="profile-btn"
-                            onClick={onProfileClick}
-                            className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                        >
+                        <button onClick={onProfileClick} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300">
                             <User size={20} />
                         </button>
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex bg-gray-200 dark:bg-[#1E1E1E] p-1 rounded-2xl mb-2 self-center w-full max-w-xs">
-                    <button
-                        onClick={() => changeView('recent')}
-                        className={`flex-1 py-2 text-sm font-semibold rounded-xl ${viewMode === 'recent' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                    >
-                        Resumen
-                    </button>
-                    <button
-                        id="history-tab"
-                        onClick={() => changeView('history')}
-                        className={`flex-1 py-2 text-sm font-semibold rounded-xl ${viewMode === 'history' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                    >
-                        Historial
-                    </button>
+                <div className="flex bg-gray-200 dark:bg-[#1E1E1E] p-1 rounded-2xl mb-2 self-center w-full max-w-xs transition-colors">
+                    <button onClick={() => changeView('recent')} className={`flex-1 py-2 text-sm font-semibold rounded-xl ${viewMode === 'recent' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500'}`}>Resumen</button>
+                    <button onClick={() => changeView('history')} className={`flex-1 py-2 text-sm font-semibold rounded-xl ${viewMode === 'history' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500'}`}>Historial</button>
                 </div>
 
                 <div className="flex-1 relative min-h-0 overflow-hidden">
                     <AnimatePresence initial={false} mode="wait">
                         {viewMode === 'recent' ? (
-                            <motion.div
-                                key="recent"
-                                initial={{ opacity: 0, x: prevViewMode === 'history' ? -40 : 0 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -40 }}
-                                transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                                className="absolute inset-0"
-                            >
-                                <div className="flex-1 relative h-full">
-                                    <div className="absolute top-0 left-0 right-0 h-8 pointer-events-none bg-gradient-to-b from-[#F5F5F5] to-transparent dark:from-[#121212] z-30" />
-                                    <div className="h-full overflow-y-auto scrollable-list pt-6 pb-24">
-                                        {/* Balance Card - Toggleable USD/VES */}
-                                        <div key="recent-view" className="mb-2 text-center w-full">
-                                            <div id="balance-card" className="flex flex-col items-center select-none w-full mx-auto">
-                                                <div className="flex items-center gap-1 mb-1">
-                                                    <p className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest">
-                                                        Balance Total
-                                                    </p>
-                                                    <button
-                                                        onClick={() => setShowSecondary(s => !s)}
-                                                        className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-all active:scale-95"
-                                                        aria-label="Cambiar moneda"
-                                                    >
-                                                        <ArrowLeftRight size={10} />
-                                                    </button>
-                                                </div>
-
-                                                {/* Primary balance */}
-                                                {!showSecondary ? (
-                                                    <div className={`font-extrabold tracking-tighter w-full flex justify-center items-baseline gap-1 ${isVES
-                                                        ? (Math.abs(balancePrimary) > 99999 ? 'text-3xl md:text-5xl' : 'text-5xl md:text-6xl')
-                                                        : 'text-[4rem] leading-none md:text-7xl'
-                                                        } ${balancePrimary >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
-                                                        <span className="flex items-baseline">
-                                                            {!isVES && '$'}
-                                                            {balancePrimary.toLocaleString(isVES ? 'es-VE' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </span>
-                                                        {isVES && <span className="text-2xl md:text-3xl font-bold">Bs</span>}
-                                                    </div>
-                                                ) : (
-                                                    <div className={`font-extrabold tracking-tighter w-full flex justify-center items-baseline gap-1 ${!isVES
-                                                        ? (Math.abs(balanceSecondary) > 99999 ? 'text-3xl md:text-5xl' : 'text-5xl md:text-6xl')
-                                                        : 'text-[4rem] leading-none md:text-7xl'
-                                                        } ${balanceSecondary >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
-                                                        <span className="flex items-baseline">
-                                                            {isVES && '$'}
-                                                            {balanceSecondary.toLocaleString(isVES ? 'en-US' : 'es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </span>
-                                                        {!isVES && <span className="text-2xl md:text-3xl font-bold">Bs</span>}
-                                                    </div>
-                                                )}
-
-
-                                            </div>
-
-
-                                            {/* Simple Large Amount Display */}
-                                            <div className="grid grid-cols-3 gap-2 my-3 w-full px-1 overflow-visible">
-                                                <button
-                                                    onClick={() => { setModalType('income'); setModalOpen(true); }}
-                                                    className="flex items-center justify-center gap-1 bg-white dark:bg-[#1E1E1E] py-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
-                                                >
-                                                    <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                                                        <ArrowUpRight size={18} />
-                                                    </div>
-                                                    <div className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
-                                                        ${currentMonthTransactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : (t.type === 'expense' && (t.category === 'Ahorro' || t.category === 'Savings')) ? acc - t.amount : acc, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                                    </div>
-                                                </button>
-
-                                                <button
-                                                    onClick={() => { setModalType('expense'); setModalOpen(true); }}
-                                                    className="flex items-center justify-center gap-1 bg-white dark:bg-[#1E1E1E] py-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
-                                                >
-                                                    <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
-                                                        <ArrowDownRight size={18} />
-                                                    </div>
-                                                    <div className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
-                                                        ${currentMonthTransactions.reduce((acc, t) => t.type === 'expense' && t.category !== 'Ahorro' && t.category !== 'Savings' ? acc + t.amount : acc, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                                    </div>
-                                                </button>
-
-                                                <button
-                                                    onClick={onSavingsClick}
-                                                    className="flex items-center justify-center gap-1 bg-white dark:bg-[#1E1E1E] py-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
-                                                >
-                                                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                                                        <Coins size={18} />
-                                                    </div>
-                                                    <div className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
-                                                        ${sortedTransactions.filter(t => t.category === 'Ahorro' || t.category.toLowerCase().includes('ahorro')).reduce((acc, t) => acc + (t.type === 'expense' ? t.amount : -t.amount), 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                                    </div>
-                                                </button>
-                                            </div>
-
-                                            <div className="w-full px-1 flex gap-2 mb-2">
-                                                <div className="flex-1">
-                                                    <RecurringCTA
-                                                        onExpenseClick={onSubscriptionsClick}
-                                                        onIncomeClick={onFixedIncomeClick}
-                                                        onMissionsClick={onMissionsClick}
-                                                        onSavingsClick={onSavingsClick}
-                                                    />
-                                                </div>
-                                                <button
-                                                    id="calculator-shortcut"
-                                                    onClick={onCalculatorClick}
-                                                    className="w-16 bg-white dark:bg-[#111] rounded-[24px] shadow-lg border border-gray-100 dark:border-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-all active:scale-95 shrink-0"
-                                                >
-                                                    <Calculator size={24} />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Transactions Header - Clickable for Full Menu */}
-                                        <div id="recent-transactions-section" className="mb-1 px-1">
-                                            <button
-                                                onClick={() => { setModalType('all'); setModalOpen(true); }}
-                                                className="flex items-center gap-2 group"
-                                            >
-                                                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Recientes</h2>
-                                                <ChevronRight size={16} className="mt-1 text-gray-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
+                            <motion.div key="recent" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="absolute inset-0">
+                                <div className="h-full overflow-y-auto scrollable-list pt-6 pb-32">
+                                    <div className="mb-3 text-center">
+                                        <div className="flex items-center justify-center gap-1 mb-1">
+                                            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Balance Total</p>
+                                            <button onClick={() => setShowSecondary(s => !s)} className="p-1 text-gray-400">
+                                                <ArrowLeftRight size={10} />
                                             </button>
                                         </div>
-
-                                        {/* Transactions List (Inline - Flow) */}
-                                        <div className="pt-2 pb-8 px-2">
-                                            {loading ? (
-                                                <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-70">
-                                                    <div className="flex gap-1.5">
-                                                        <motion.div
-                                                            animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
-                                                            transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-                                                            className="w-2.5 h-2.5 bg-gray-900 dark:bg-white rounded-full"
-                                                        />
-                                                        <motion.div
-                                                            animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
-                                                            transition={{ duration: 1, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
-                                                            className="w-2.5 h-2.5 bg-gray-900 dark:bg-white rounded-full"
-                                                        />
-                                                        <motion.div
-                                                            animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
-                                                            transition={{ duration: 1, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
-                                                            className="w-2.5 h-2.5 bg-gray-900 dark:bg-white rounded-full"
-                                                        />
-                                                    </div>
-                                                    <p className="text-sm font-bold text-gray-400 dark:text-gray-500 tracking-wide">Cargando movimientos</p>
-                                                </div>
-                                            ) : sortedTransactions.length === 0 ? (
-                                                <div className="text-center py-10 opacity-50">
-                                                    <div className="mx-auto w-16 h-16 bg-gray-200 dark:bg-[#1E1E1E] rounded-full flex items-center justify-center text-gray-400 mb-4">
-                                                        <DollarSign size={24} />
-                                                    </div>
-                                                    <p className="text-gray-500 dark:text-gray-400">Sin movimientos.</p>
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-3">
-                                                    {sortedTransactions.map((t) => (
-                                                        <div
-                                                            key={t.id}
-                                                            onClick={() => onEditTransaction(t)}
-                                                            className="group bg-white dark:bg-[#1a1a1a] p-3 rounded-2xl shadow-sm border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/50 cursor-pointer flex items-center justify-between transition-all duration-300 hover:scale-[1.02] hover:shadow-lg relative hover:z-10"
-                                                        >
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${t.category === 'Ahorro'
-                                                                    ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                                                                    : t.type === 'income'
-                                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                                                                        : 'bg-gray-50 dark:bg-[#2C2C2C] text-gray-600 dark:text-gray-400'
-                                                                    }`}>
-                                                                    {React.cloneElement(getCategoryIcon(t.category) as React.ReactElement<any>, { size: 16 })}
-                                                                </div>
-                                                                <div>
-                                                                    <div className="text-sm font-bold text-gray-900 dark:text-white capitalize">{t.description}</div>
-                                                                    <div className="text-[10px] text-gray-400 capitalize">{t.category} • {formatDate(t.date)}</div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <div className={`text-sm font-bold ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
-                                                                    {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                </div>
-                                                                {t.originalAmount && t.originalCurrency === 'VES' && (
-                                                                    <div className="text-[9px] text-gray-400 font-medium">
-                                                                        {t.originalAmount.toLocaleString('es-VE', { maximumFractionDigits: 2 })} Bs
-                                                                        {t.rateType && <span className="ml-1 text-indigo-400 opacity-80 uppercase">• {getRateLabel(t.rateType)}</span>}
-                                                                    </div>
-                                                                )}
-                                                                <div className="text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] flex justify-end items-center gap-1 mt-0.5">
-                                                                    <Edit2 size={10} /> Editar
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
+                                        {/* Primary balance */}
+                                        {!showSecondary ? (
+                                            <div className={`font-extrabold tracking-tighter w-full flex justify-center items-baseline gap-1 ${isVES
+                                                ? (Math.abs(balancePrimary) > 9999 ? 'text-4xl md:text-5xl' : 'text-5xl md:text-6xl')
+                                                : 'text-[4.2rem] leading-none md:text-7xl'
+                                                } ${balancePrimary >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
+                                                <span className="flex items-baseline">
+                                                    {!isVES && '$'}
+                                                    {balancePrimary.toLocaleString(isVES ? 'es-VE' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                                {isVES && <span className="text-3xl md:text-4xl font-bold">Bs</span>}
+                                            </div>
+                                        ) : (
+                                            <div className={`font-extrabold tracking-tighter w-full flex justify-center items-baseline gap-1 ${!isVES
+                                                ? (Math.abs(balanceSecondary) > 9999 ? 'text-4xl md:text-5xl' : 'text-5xl md:text-6xl')
+                                                : 'text-[4.2rem] leading-none md:text-7xl'
+                                                } ${balanceSecondary >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
+                                                <span className="flex items-baseline">
+                                                    {isVES && '$'}
+                                                    {balanceSecondary.toLocaleString(isVES ? 'en-US' : 'es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                                {!isVES && <span className="text-3xl md:text-4xl font-bold">Bs</span>}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none bg-[#F5F5F5] dark:bg-[#121212]" style={{ maskImage: 'linear-gradient(to top, black, transparent)', WebkitMaskImage: 'linear-gradient(to top, black, transparent)' }} />
+
+                                    <div className="grid grid-cols-3 gap-2 my-3 w-full px-1 overflow-visible">
+                                        <button
+                                            onClick={() => { setModalType('income'); setModalOpen(true); }}
+                                            className="flex items-center justify-center gap-1 bg-white dark:bg-[#1E1E1E] py-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                                                <ArrowUpRight size={18} />
+                                            </div>
+                                            <div className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                                ${currentMonthTransactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : (t.type === 'expense' && (t.category === 'Ahorro' || t.category === 'Savings')) ? acc - t.amount : acc, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                            </div>
+                                        </button>
+
+                                        <button
+                                            onClick={() => { setModalType('expense'); setModalOpen(true); }}
+                                            className="flex items-center justify-center gap-1 bg-white dark:bg-[#1E1E1E] py-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                                                <ArrowDownRight size={18} />
+                                            </div>
+                                            <div className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                                ${currentMonthTransactions.reduce((acc, t) => t.type === 'expense' && t.category !== 'Ahorro' && t.category !== 'Savings' ? acc + t.amount : acc, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                            </div>
+                                        </button>
+
+                                        <button
+                                            onClick={onSavingsClick}
+                                            className="flex items-center justify-center gap-1 bg-white dark:bg-[#1E1E1E] py-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-[#333] transition-all duration-500 hover:scale-105 hover:shadow-md cursor-pointer"
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                                                <Coins size={18} />
+                                            </div>
+                                            <div className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
+                                                ${sortedTransactions.filter(t => t.category === 'Ahorro' || t.category.toLowerCase().includes('ahorro')).reduce((acc, t) => acc + (t.type === 'expense' ? t.amount : -t.amount), 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                            </div>
+                                        </button>
+                                    </div>
+                                    <div className="w-full px-1 flex gap-2 mb-2">
+                                        <div className="flex-1">
+                                            <RecurringCTA onExpenseClick={onSubscriptionsClick} onIncomeClick={onFixedIncomeClick} onMissionsClick={onMissionsClick} onSavingsClick={onSavingsClick} />
+                                        </div>
+                                        <button onClick={onCalculatorClick} className="w-16 bg-white dark:bg-[#111] rounded-[24px] shadow-lg border border-gray-100 dark:border-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-indigo-500 transition-all"><Calculator size={24} /></button>
+                                    </div>
+
+                                    <div className="mb-2 px-1 flex items-center justify-between">
+                                        <button onClick={() => { setModalType('all'); setModalOpen(true); }} className="flex items-center gap-2 group">
+                                            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Recientes</h2>
+                                            <ChevronRight size={16} className="text-gray-400 mt-[3px]" />
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-3 px-1">
+                                        {loading ? (
+                                            <div className="flex justify-center py-10"><Loader2 className="animate-spin text-gray-400" /></div>
+                                        ) : sortedTransactions.length === 0 ? (
+                                            <p className="text-center py-10 text-gray-400">Sin movimientos.</p>
+                                        ) : (
+                                            sortedTransactions.slice(0, 10).map(t => (
+                                                <div key={t.id} onClick={() => onEditTransaction(t)} className="bg-white dark:bg-[#1a1a1a] p-3 rounded-2xl shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-white/10 hover:shadow-md hover:bg-gray-50/50 dark:hover:bg-white/5 cursor-pointer flex items-center justify-between transition-all duration-500">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${t.category === 'Ahorro'
+                                                            ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400'
+                                                            : t.type === 'income'
+                                                                ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                                                                : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
+                                                            }`}>
+                                                            {React.cloneElement(getCategoryIcon(t.category) as React.ReactElement<any>, { size: 16 })}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-bold text-gray-900 dark:text-white capitalize">{t.description}</div>
+                                                            <div className="text-[10px] text-gray-400 capitalize">{t.category} • {formatDate(t.date)}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className={`text-sm font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-gray-900 dark:text-white'}`}>
+                                                        {t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             </motion.div>
                         ) : (
-                            <motion.div
-                                key="history"
-                                initial={{ opacity: 0, x: prevViewMode === 'recent' ? 40 : 0 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 40 }}
-                                transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                                className="absolute inset-0 flex flex-col"
-                            >
-                                <div key="history-view" className="flex-1 flex flex-col h-full" style={{ minHeight: 0 }}>
-
+                            <motion.div key="history" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }} className="absolute inset-0 flex flex-col pt-6 pb-32">
+                                <div className="flex items-center justify-between bg-white dark:bg-[#1E1E1E] rounded-2xl py-3 px-4 mb-4 border border-gray-100 dark:border-[#333] shadow-sm">
+                                    <button onClick={() => selectedMonthIndex < allMonths.length - 1 && setSelectedMonthIndex(selectedMonthIndex + 1)} disabled={selectedMonthIndex >= allMonths.length - 1} className="p-2 disabled:opacity-30"><ChevronLeft size={20} /></button>
+                                    <span className="font-bold text-gray-900 dark:text-white">{formatMonth(allMonths[selectedMonthIndex])}</span>
+                                    <button onClick={() => selectedMonthIndex > 0 && setSelectedMonthIndex(selectedMonthIndex - 1)} disabled={selectedMonthIndex <= 0} className="p-2 disabled:opacity-30"><ChevronRight size={20} /></button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto scrollable-list space-y-3">
                                     {(() => {
-                                        const vi = Math.min(Math.max(selectedMonthIndex, 0), allMonths.length - 1);
-                                        const mk = allMonths[vi];
-                                        const monthEntry = monthlyData.find(([k]) => k === mk);
-                                        const md = monthEntry ? monthEntry[1] : { income: 0, expense: 0, balance: 0, transactions: [] };
-                                        const txs = [...md.transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                                        return (
-                                            <div className="flex flex-col flex-1" style={{ minHeight: 0 }}>
-                                                {/* Header fijo */}
-                                                <div className="flex-shrink-0 space-y-3 pt-2 pb-3">
-                                                    {/* Navegador de Mes */}
-                                                    <div className="flex items-center justify-between bg-[#1C1C1E] rounded-[20px] py-3 px-4 border border-gray-800">
-                                                        <button onClick={() => { if (vi < allMonths.length - 1) setSelectedMonthIndex(vi + 1); }} disabled={vi >= allMonths.length - 1} className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#2A2A2C] text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#333] transition-colors">
-                                                            <ChevronLeft size={18} />
-                                                        </button>
-                                                        <span className="text-white font-semibold text-base">{formatMonth(mk)}</span>
-                                                        <button onClick={() => { if (vi > 0) setSelectedMonthIndex(vi - 1); }} disabled={vi <= 0} className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#2A2A2C] text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#333] transition-colors">
-                                                            <ChevronRight size={18} />
-                                                        </button>
+                                        const mk = allMonths[selectedMonthIndex];
+                                        const md = monthlyData.find(([k]) => k === mk)?.[1] || { transactions: [] };
+                                        return md.transactions.length === 0 ? (
+                                            <p className="text-center py-20 text-gray-500">No hay movimientos.</p>
+                                        ) : md.transactions.sort((a, b) => getTransactionTimestamp(b) - getTransactionTimestamp(a)).map(t => (
+                                            <div key={t.id} onClick={() => onEditTransaction(t)} className="bg-white dark:bg-[#1a1a1a] p-3 rounded-2xl flex items-center justify-between cursor-pointer border border-transparent hover:border-gray-100 dark:hover:border-white/10 hover:shadow-md hover:bg-gray-50/50 dark:hover:bg-white/5 transition-all duration-500">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${t.category === 'Ahorro'
+                                                        ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400'
+                                                        : t.type === 'income'
+                                                            ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                                                            : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'
+                                                        }`}>
+                                                        {React.cloneElement(getCategoryIcon(t.category) as React.ReactElement<any>, { size: 16 })}
                                                     </div>
-                                                    {/* Resumen del Mes */}
-                                                    <div className="bg-[#1C1C1E] rounded-[20px] p-5 border border-gray-800">
-                                                        {/* Fila superior: Ingresos + Gastos + Neto */}
-                                                        <div className="grid grid-cols-3 gap-2 text-center">
-                                                            <div>
-                                                                <div className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-medium">Ingresos</div>
-                                                                <div className="text-emerald-400 font-bold text-base">+{md.income.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                                                            </div>
-                                                            <div>
-                                                                <div className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-medium">Gastos</div>
-                                                                <div className="text-red-400 font-bold text-base">-{md.expense.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                                                            </div>
-                                                            <div className="bg-[#2A2A2C] rounded-xl py-2 px-1 border border-gray-700/50">
-                                                                <div className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 font-medium">Neto</div>
-                                                                <div className={`font-bold text-base ${md.balance >= 0 ? 'text-white' : 'text-red-400'}`}>{md.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                                                            </div>
-                                                        </div>
-                                                        {/* Fila inferior: cantidad de movimientos */}
-                                                        <div className="mt-3 pt-3 border-t border-gray-700/50 text-center">
-                                                            <span className="text-xs text-gray-400 font-medium">{md.transactions.length} {md.transactions.length === 1 ? 'movimiento' : 'movimientos'} este mes</span>
-                                                        </div>
+                                                    <div>
+                                                        <div className="font-bold text-sm text-gray-900 dark:text-white capitalize">{t.description}</div>
+                                                        <div className="text-[10px] text-gray-400">{formatDate(t.date)}</div>
                                                     </div>
                                                 </div>
-
-                                                {/* Lista scrolleable */}
-                                                <div className="relative flex-1 min-h-0 overflow-hidden">
-                                                    <div className="absolute top-0 left-0 right-0 h-6 z-10 pointer-events-none bg-gradient-to-b from-[#121212] to-transparent" />
-                                                    <div
-                                                        className="h-full overflow-y-auto scrollable-list pb-36 pt-4 flex flex-col gap-3 pr-1"
-                                                    >
-                                                        {txs.length === 0 ? (
-                                                            <div className="text-center py-16 text-gray-500 text-sm">No hay movimientos este mes.</div>
-                                                        ) : txs.map((t) => (
-                                                            <div key={t.id} onClick={() => onEditTransaction(t)} className="bg-white dark:bg-[#1a1a1a] p-3 rounded-2xl flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-[#2C2C2C] border border-transparent dark:border-white/5 shadow-sm flex-shrink-0">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${t.category === 'Ahorro' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : t.type === 'income' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-gray-100 dark:bg-[#333] text-gray-600 dark:text-gray-400'}`}>
-                                                                        {getCategoryIcon(t.category)}
-                                                                    </div>
-                                                                    <div>
-                                                                        <div className="font-bold text-sm text-gray-900 dark:text-white capitalize">{t.description}</div>
-                                                                        <div className="text-[10px] text-gray-400">{formatDate(t.date)}</div>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="text-right">
-                                                                    <div className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>{t.type === 'income' ? '+' : '-'}{t.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                                                    {t.originalAmount && t.originalCurrency === 'VES' && (
-                                                                        <div className="text-[10px] text-gray-400 font-medium">
-                                                                            {t.originalAmount.toLocaleString('es-VE', { maximumFractionDigits: 2 })} Bs
-                                                                            {t.rateType && <span className="ml-1 text-indigo-400 opacity-80 uppercase">• {getRateLabel(t.rateType)}</span>}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                    <div className="absolute bottom-0 left-0 right-0 h-24 z-10 pointer-events-none bg-gradient-to-t from-[#121212] to-transparent" />
-                                                </div>
+                                                <div className={`font-bold text-sm ${t.type === 'income' ? 'text-emerald-600' : 'text-gray-900 dark:text-white'}`}>{t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                                             </div>
-                                        );
+                                        ));
                                     })()}
                                 </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
                 </div>
-
+                <QuickMenu
+                    onBudget={onMissionsClick}
+                    onIncome={onFixedIncomeClick}
+                    onExpense={onSubscriptionsClick}
+                    onSavings={onSavingsClick}
+                    onRates={onRatesClick}
+                />
             </div>
 
-            {/* Transaction List Modal */}
             <TransactionListModal
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}

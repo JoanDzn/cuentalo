@@ -106,7 +106,18 @@ const SubscriptionsModal: React.FC<SubscriptionsModalProps> = ({ isOpen, onClose
         onUpdate(recurringItems.filter(item => item.id !== id));
     };
 
-    const filteredItems = recurringItems.filter(item => item.type === activeTab && item.category !== 'Ahorro');
+    // De-duplicate items for display to avoid "cloning" confusion in the global list
+    const filteredItems = recurringItems
+        .filter(item => item.type === activeTab && item.category !== 'Ahorro')
+        .reduce((acc, curr) => {
+            const key = `${curr.type}-${curr.name.toLowerCase()}`;
+            // If multiple exist (different periods), keep the most specific one or just the first encountered
+            if (!acc.some(item => `${item.type}-${item.name.toLowerCase()}` === key)) {
+                acc.push(curr);
+            }
+            return acc;
+        }, [] as RecurringTransaction[]);
+
     const totalAmount = filteredItems.reduce((acc, curr) => acc + curr.amount, 0);
 
     return (

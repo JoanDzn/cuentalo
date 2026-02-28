@@ -17,6 +17,8 @@ import { normalizeToUSD } from '../utils/financeUtils';
 import CurrencyConverterModal from '../components/CurrencyConverterModal';
 import { setCurrencyPreference, getCurrencyPreference } from '../hooks/useCurrencyPreference';
 import { AnimatedBackground } from '../components/AnimatedBackground';
+import { BalanceSetupModal } from '../components/BalanceSetupModal';
+import { Globe, DollarSign, Euro, Coins, X, TrendingUp } from 'lucide-react';
 
 // Tasas por defecto (Fallback)
 const DEFAULT_RATES: RateData = {
@@ -57,6 +59,7 @@ const DashboardPage: React.FC = () => {
   const [dataLoading, setDataLoading] = useState<boolean>(true);
   const [showTour, setShowTour] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  const [showBalanceSetup, setShowBalanceSetup] = useState(false);
 
   // Check Onboarding Status
   useEffect(() => {
@@ -85,8 +88,50 @@ const DashboardPage: React.FC = () => {
   };
 
   const handleCurrencyPickerSelect = (currency: 'USD' | 'VES') => {
-    if (user) setCurrencyPreference(currency, user.id);
+    if (user) {
+      setCurrencyPreference(currency, user.id);
+
+      // After currency, ask for balance
+      const hasBalanceSetup = localStorage.getItem(`balance_setup_completed_${user.id}`);
+      if (!hasBalanceSetup) {
+        setTimeout(() => setShowBalanceSetup(true), 400);
+      }
+    }
     setShowCurrencyPicker(false);
+  };
+
+  const handleBalanceSetupComplete = async (balances: { usd: number, ves: number }) => {
+    if (!user) return;
+
+    // Create initial balance transactions
+    if (balances.usd > 0) {
+      handleNewTransaction({
+        amount: balances.usd,
+        type: 'income',
+        description: 'Saldo Inicial (USD)',
+        category: 'Ingreso Inicial',
+        currency: 'USD',
+        rate_type: null,
+        date: new Date().toISOString().split('T')[0],
+        is_invalid: false,
+      } as any);
+    }
+
+    if (balances.ves > 0) {
+      handleNewTransaction({
+        amount: balances.ves,
+        type: 'income',
+        description: 'Saldo Inicial (VES)',
+        category: 'Ingreso Inicial',
+        currency: 'VES',
+        rate_type: 'bcv',
+        date: new Date().toISOString().split('T')[0],
+        is_invalid: false,
+      } as any);
+    }
+
+    localStorage.setItem(`balance_setup_completed_${user.id}`, 'true');
+    setShowBalanceSetup(false);
   };
 
   // Fetch user and data
@@ -121,46 +166,7 @@ const DashboardPage: React.FC = () => {
     return unsubscribe;
   }, [navigate]);
 
-  // Check for due recurring transactions on load
-  useEffect(() => {
-    if (recurringTransactions.length > 0 && user) {
-      const today = new Date();
-      const currentDay = today.getDate();
-
-      let newTransactions: Transaction[] = [];
-
-      recurringTransactions.forEach(item => {
-        if (item.day === currentDay) {
-          const alreadyExists = transactions.some(t =>
-            t.description === item.name &&
-            Math.abs(t.amount - item.amount) < 0.01 &&
-            t.date.startsWith(today.toISOString().split('T')[0])
-          );
-
-          if (!alreadyExists) {
-            newTransactions.push({
-              id: Date.now().toString() + Math.random().toString().substr(2, 5),
-              description: item.name,
-              amount: item.amount,
-              category: item.type === 'expense' ? 'Suscripciones' : 'Salario',
-              date: today.toISOString().split('T')[0], // YYYY-MM-DD
-              type: item.type,
-              createdAt: today.toISOString()
-            });
-          }
-        }
-      });
-
-      if (newTransactions.length > 0) {
-        setTransactions(prev => [...newTransactions, ...prev]);
-        console.log("Auto-generated transactions:", newTransactions);
-        // Persist generated transactions
-        newTransactions.forEach(t => {
-          if (user) dbService.addUserTransaction(user.id, t);
-        });
-      }
-    }
-  }, [recurringTransactions, user]); // Run when recurring items load.
+  // Removed auto-generation logic as per user feedback - users want explicit control via voice or UI
 
   // --- Mission Logic Engine ---
   useEffect(() => {
@@ -355,10 +361,9 @@ const DashboardPage: React.FC = () => {
         })
         .catch(error => {
           console.error("Failed to save transaction in background:", error);
-          // Only rollback if absolutely necessary, but since it's optimistic, we keep it for UX 
-          // unless user refreshes or we show an error toast
-          setTransactions(prev => prev.filter(t => t.id !== newTransaction.id));
-          alert("No se pudo sincronizar la transacción. Se eliminó de la lista.");
+          // UX DECISION: We keep the optimistic transaction in the list so the user doesn't see it "disappear"
+          // In a real production app, we would mark it as 'unsynced' and retry later.
+          // alert("Problema de conexión. La transacción se guardó localmente y se sincronizará luego.");
         });
     }
 
@@ -440,6 +445,65 @@ const DashboardPage: React.FC = () => {
     if (user) dbService.addUserTransaction(user.id, newT);
   };
 
+  const handleMarkAsPaid = async (categoryName: string, amount: number) => {
+    // If we mark as paid, we assume they paid the full budget or the remaining amount.
+    // For now, let's add a transaction for the specified amount.
+    await handleNewTransaction({
+      amount: amount,
+      type: 'expense',
+      category: categoryName,
+      description: `Pago de ${categoryName}`,
+      currency: 'USD',
+      rate_type: null,
+      date: new Date().toISOString().split('T')[0],
+      is_invalid: false,
+    } as any);
+  };
+
+  const handleVoiceExpense = async (analysis: ExpenseAnalysis) => {
+    const text = (analysis.description || "").toLowerCase();
+    // Improved detection: if it's explicitly a payment word OR if there's no amount but we find a budget match
+    const isExplicitPayment = text.includes('pagué') || text.includes('pague') || text.includes('pagado') || text.includes('pago');
+    const hasNoAmount = !analysis.amount || analysis.amount <= 0;
+
+    if (hasNoAmount || isExplicitPayment) {
+      // Look for a matching budget item in recurring transactions (budget items)
+      const searchTerms = [
+        analysis.category?.toLowerCase(),
+        analysis.description?.toLowerCase(),
+        // Synonyms for common things
+        (text.includes('internet') || text.includes('wifi') || text.includes('net') || text.includes('inter')) ? 'internet' : null,
+        (text.includes('residencia') || text.includes('alquiler') || text.includes('vivienda') || text.includes('casa') || text.includes('arriendo')) ? 'vivienda' : null,
+        (text.includes('luz') || text.includes('electricidad') || text.includes('corriente')) ? 'luz' : null,
+        (text.includes('agua')) ? 'agua' : null,
+        (text.includes('comida') || text.includes('mercado') || text.includes('super') || text.includes('viveres')) ? 'alimentos' : null,
+      ].filter(Boolean) as string[];
+
+      const budgetItem = recurringTransactions.find(r =>
+        searchTerms.some(term => {
+          const rName = r.name.toLowerCase();
+          return rName.includes(term) || term.includes(rName);
+        })
+      );
+
+      if (budgetItem) {
+        // If we found a budget match, we fix the analysis
+        analysis.amount = budgetItem.amount;
+        analysis.type = 'expense';
+        analysis.category = budgetItem.category || budgetItem.name;
+        analysis.is_invalid = false;
+        analysis.currency = 'USD'; // Budget items are stored as USD
+
+        // Give it a better description if it was just a generic payment word
+        if (isExplicitPayment || text.length < 15) {
+          analysis.description = `Pago de ${budgetItem.name}`;
+        }
+      }
+    }
+
+    await handleNewTransaction(analysis);
+  };
+
   return (
     <div className="relative w-full h-screen overflow-hidden font-sans text-gray-900 dark:text-gray-100 selection:bg-indigo-100 dark:selection:bg-indigo-900 transition-colors duration-300">
       <motion.div
@@ -448,16 +512,17 @@ const DashboardPage: React.FC = () => {
         exit={{ opacity: 0 }}
         className="relative z-10 w-full h-full flex flex-col transition-colors duration-300"
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {showMissions ? (
             <motion.div
               key="missions"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="w-full h-full bg-[#F5F5F5] dark:bg-[#121212]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 w-full h-full bg-[#121212] z-20"
             >
-              <div className="w-full h-full bg-[#F5F5F5]/90 dark:bg-[#121212]/90 backdrop-blur-md">
+              <div className="w-full h-full bg-[#121212]/90 backdrop-blur-md">
                 <BudgetManager
                   onBack={() => setShowMissions(false)}
                   transactions={transactions}
@@ -468,16 +533,18 @@ const DashboardPage: React.FC = () => {
                   }}
                   missions={missions}
                   onUpdateMission={handleUpdateMission}
+                  onAddTransaction={handleMarkAsPaid}
                 />
               </div>
             </motion.div>
           ) : (
             <motion.div
               key="dashboard"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.02 }}
-              className="flex-1 flex flex-col h-full relative"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 w-full h-full flex flex-col z-10"
             >
               <Dashboard
                 transactions={transactions}
@@ -491,6 +558,7 @@ const DashboardPage: React.FC = () => {
                 onMissionsClick={() => setShowMissions(true)}
                 onSavingsClick={() => setShowSavings(true)}
                 onCalculatorClick={() => setShowCalculator(true)}
+                onRatesClick={() => setShowRates(true)}
                 loading={dataLoading}
                 userId={user?.id}
               />
@@ -526,7 +594,7 @@ const DashboardPage: React.FC = () => {
               className="fixed inset-0 z-50 pointer-events-none"
             >
               <VoiceInput
-                onExpenseAdded={handleNewTransaction}
+                onExpenseAdded={handleVoiceExpense}
                 onMissionsClick={() => setShowMissions(true)}
                 onRequestEdit={(data) => {
                   setCurrentTransaction({
@@ -615,6 +683,12 @@ const DashboardPage: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <BalanceSetupModal
+          isOpen={showBalanceSetup}
+          onComplete={handleBalanceSetupComplete}
+          currencyPreference={user ? getCurrencyPreference(user.id) : 'USD'}
+        />
 
 
         {/* Modals & Drawers */}
