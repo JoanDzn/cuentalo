@@ -140,15 +140,10 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({
       return dateStr.startsWith(currentPeriod) && t.type === 'expense';
     });
 
-    const carryOverBalance = transactions
-      .filter(t => {
-        const dateStr = t.date || (t.createdAt ? t.createdAt.split('T')[0] : '');
-        return dateStr < currentPeriod;
-      })
-      .reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
-
+    // Previous month balances shouldn't reflect in the explicitly inputted monthly budget.
+    // The user manually inputs their income per month, so totalBudget = currentIncomesTotal
     const currentIncomesTotal = effectiveItems.filter(r => r.type === 'income').reduce((acc, r) => acc + r.amount, 0);
-    const totalBudget = Math.max(0, carryOverBalance + currentIncomesTotal);
+    const totalBudget = currentIncomesTotal;
 
     // Total spent this month (all expenses in this period)
     const totalSpent = thisMonthTx.reduce((acc, t) => acc + t.amount, 0);

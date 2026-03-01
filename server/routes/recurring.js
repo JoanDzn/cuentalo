@@ -37,6 +37,7 @@ router.post('/sync', async (req, res) => {
                 user: req.user._id,
                 name: item.name,
                 amount: item.amount,
+                period: item.period,
                 day: item.day,
                 type: item.type,
                 category: item.category || 'General',
