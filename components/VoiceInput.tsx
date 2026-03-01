@@ -8,9 +8,10 @@ interface VoiceInputProps {
   onExpenseAdded: (expense: ExpenseAnalysis) => void;
   onMissionsClick?: () => void;
   onRequestEdit?: (expense: ExpenseAnalysis) => void;
+  children?: React.ReactNode;
 }
 
-const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }) => {
+const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit, children }) => {
   const [state, setState] = useState<AppState | 'VALIDATING'>('IDLE' as any);
   const [transcript, setTranscript] = useState('');
   const [inputText, setInputText] = useState('');
@@ -445,36 +446,44 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
 
       {/* ── IDLE mic button ─────────────────────────────────────────────────── */}
       {state === 'IDLE' && (
-        <div className="fixed bottom-8 left-0 right-0 z-[45] flex justify-center items-end pointer-events-none">
-          <div className="relative flex flex-col items-center pointer-events-auto">
-            <motion.div
-              drag
-              dragConstraints={{ left: -100, right: 100, top: -150, bottom: 50 }}
-              dragElastic={0.15}
-              dragMomentum={false}
-              dragSnapToOrigin
-              style={{ x, y, scale: btnScale }}
-              onDragStart={() => isDragging.current = true}
-              onDragEnd={(_, info) => {
-                const ox = info.offset.x;
-                const oy = info.offset.y;
-                if (oy < -30) startListening();
-                else if (ox > 30) setState('TYPING' as any);
-                else if (ox < -30) openCamera();          // ← getUserMedia directo
-                setTimeout(() => { isDragging.current = false; }, 100);
-              }}
-              onClick={() => {
-                if (!isDragging.current) startListening();
-              }}
-              id="voice-input-btn"
-              className="w-16 h-16 bg-white/50 dark:bg-[#202020]/90 backdrop-blur-[24px] border border-gray-200/50 dark:border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-gray-800 dark:text-white rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-50 pointer-events-auto transition-colors drop-shadow-[0_0_8px_rgba(255,255,255,0.05)]"
-            >
-              <div className="relative w-full h-full flex items-center justify-center">
-                <motion.div style={{ opacity: centerOpacity, position: 'absolute' }} className="drop-shadow-md"><Mic size={28} /></motion.div>
-                <motion.div style={{ opacity: rightOpacity, position: 'absolute' }} className="drop-shadow-md"><Keyboard size={28} /></motion.div>
-                <motion.div style={{ opacity: leftOpacity, position: 'absolute' }} className="drop-shadow-md"><Camera size={28} /></motion.div>
-              </div>
-            </motion.div>
+        <div className="fixed bottom-8 left-0 right-0 z-[45] flex justify-center items-end pointer-events-none w-full px-6">
+          <div className="grid grid-cols-3 items-end w-full max-w-2xl pb-1">
+            <div className="col-span-1"></div>
+
+            <div className="col-span-1 flex justify-center pointer-events-auto">
+              <motion.div
+                drag
+                dragConstraints={{ left: -100, right: 100, top: -150, bottom: 50 }}
+                dragElastic={0.15}
+                dragMomentum={false}
+                dragSnapToOrigin
+                style={{ x, y, scale: btnScale }}
+                onDragStart={() => isDragging.current = true}
+                onDragEnd={(_, info) => {
+                  const ox = info.offset.x;
+                  const oy = info.offset.y;
+                  if (oy < -30) startListening();
+                  else if (ox > 30) setState('TYPING' as any);
+                  else if (ox < -30) openCamera();          // ← getUserMedia directo
+                  setTimeout(() => { isDragging.current = false; }, 100);
+                }}
+                onClick={() => {
+                  if (!isDragging.current) startListening();
+                }}
+                id="voice-input-btn"
+                className="w-16 h-16 bg-white/50 dark:bg-[#202020]/90 backdrop-blur-[24px] border border-gray-200/50 dark:border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-gray-800 dark:text-white rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-50 pointer-events-auto transition-colors drop-shadow-[0_0_8px_rgba(255,255,255,0.05)]"
+              >
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <motion.div style={{ opacity: centerOpacity, position: 'absolute' }} className="drop-shadow-md"><Mic size={28} /></motion.div>
+                  <motion.div style={{ opacity: rightOpacity, position: 'absolute' }} className="drop-shadow-md"><Keyboard size={28} /></motion.div>
+                  <motion.div style={{ opacity: leftOpacity, position: 'absolute' }} className="drop-shadow-md"><Camera size={28} /></motion.div>
+                </div>
+              </motion.div>
+            </div>
+
+            <div className="col-span-1 flex justify-end pointer-events-auto md:pr-4">
+              {children}
+            </div>
           </div>
         </div>
       )}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import Dashboard from '../components/Dashboard';
+import Dashboard, { QuickMenu } from '../components/Dashboard';
 import VoiceInput from '../components/VoiceInput';
 import EditModal from '../components/EditModal';
 import ProfileDrawer from '../components/ProfileDrawer';
@@ -609,7 +609,15 @@ const DashboardPage: React.FC = () => {
                   } as any);
                   setIsEditing(true);
                 }}
-              />
+              >
+                <QuickMenu
+                  onBudget={() => setShowMissions(true)}
+                  onIncome={() => { setSubscriptionModalTab('income'); setShowSubscriptions(true); }}
+                  onExpense={() => { setSubscriptionModalTab('expense'); setShowSubscriptions(true); }}
+                  onSavings={() => setShowSavings(true)}
+                  onRates={() => setShowRates(true)}
+                />
+              </VoiceInput>
             </motion.div>
           )}
         </AnimatePresence>

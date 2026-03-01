@@ -137,7 +137,7 @@ const formatDate = (dateStep: string) => {
     return `${day}/${month}/${year}`;
 };
 
-const QuickMenu = ({ onBudget, onIncome, onExpense, onSavings, onRates }: { onBudget: () => void, onIncome: () => void, onExpense: () => void, onSavings: () => void, onRates: () => void }) => {
+export const QuickMenu = ({ onBudget, onIncome, onExpense, onSavings, onRates }: { onBudget: () => void, onIncome: () => void, onExpense: () => void, onSavings: () => void, onRates: () => void }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const items = [
@@ -560,14 +560,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                         )}
                     </AnimatePresence>
                 </div>
-                <QuickMenu
-                    onBudget={onMissionsClick}
-                    onIncome={onFixedIncomeClick}
-                    onExpense={onSubscriptionsClick}
-                    onSavings={onSavingsClick}
-                    onRates={onRatesClick}
-                />
-            </div >
+            </div>
 
             <TransactionListModal
                 isOpen={modalOpen}
