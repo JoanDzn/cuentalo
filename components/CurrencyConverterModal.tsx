@@ -178,7 +178,7 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
         if (!val || val === '0') return '0,00';
         const num = parseFloat(val.replace(',', '.'));
         if (isNaN(num)) return '0,00';
-        return new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+        return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
     }
 
     const handleKey = useCallback((key: string) => {

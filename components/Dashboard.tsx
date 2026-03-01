@@ -378,7 +378,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                                 } ${balancePrimary >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
                                                 <span className="flex items-baseline">
                                                     {!isVES && '$'}
-                                                    {balancePrimary.toLocaleString(isVES ? 'es-VE' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    {balancePrimary.toLocaleString(isVES ? 'es-ES' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                                 {isVES && <span className="text-3xl md:text-4xl font-bold">Bs</span>}
                                             </div>
@@ -389,7 +389,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                                 } ${balanceSecondary >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-500'}`}>
                                                 <span className="flex items-baseline">
                                                     {isVES && '$'}
-                                                    {balanceSecondary.toLocaleString(isVES ? 'en-US' : 'es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    {balanceSecondary.toLocaleString(isVES ? 'en-US' : 'es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                                 {!isVES && <span className="text-3xl md:text-4xl font-bold">Bs</span>}
                                             </div>

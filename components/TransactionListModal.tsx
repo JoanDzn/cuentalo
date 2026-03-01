@@ -421,7 +421,7 @@ const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onC
                                                 </div>
                                                 {t.originalAmount && t.originalCurrency === 'VES' && (
                                                     <div className="text-[10px] text-gray-400 font-medium">
-                                                        {t.originalAmount.toLocaleString('es-VE', { maximumFractionDigits: 2 })} Bs
+                                                        {t.originalAmount.toLocaleString('es-ES', { maximumFractionDigits: 2 })} Bs
                                                         {t.rateType && <span className="ml-1 text-indigo-400 opacity-80 uppercase">• {getRateLabel(t.rateType)}</span>}
                                                     </div>
                                                 )}
