@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Transaction, TransactionType, RateData } from '../types';
 import { X, ArrowUpRight, ArrowDownRight, Coffee, Home, Car, ShoppingCart, Zap, Briefcase, Gift, DollarSign, List, Filter, TrendingUp, TrendingDown, PieChart as PieChartIcon, BarChart3, ArrowRightLeft } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
@@ -198,7 +199,7 @@ const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onC
 
     const totalChartValue = chartData.reduce((a, b) => a + b.value, 0);
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
             <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up">
 
@@ -433,7 +434,8 @@ const TransactionListModal: React.FC<TransactionListModalProps> = ({ isOpen, onC
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
