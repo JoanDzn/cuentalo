@@ -497,7 +497,7 @@ const CurrencyConverterModal: React.FC<CurrencyConverterModalProps> = ({ isOpen,
                                     onPointerLeave={key === 'DEL' ? stopDelete : undefined}
                                     onClick={key !== 'DEL' ? () => handleKey(key) : undefined}
                                     className={`h-14 rounded-2xl flex items-center justify-center text-xl font-semibold select-none transition-all duration-300 ${key === 'DEL'
-                                        ? `${accent.delBg} ${accent.delText}`
+                                        ? 'bg-gray-200 text-gray-700 dark:bg-[#3A3A3A] dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-[#4A4A4A]'
                                         : 'bg-gray-50 dark:bg-[#2C2C2C] text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#333]'
                                         }`}
                                 >

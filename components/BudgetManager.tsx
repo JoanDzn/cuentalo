@@ -256,7 +256,7 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({
               {renderMonthBar()}
 
               {isEmpty ? (
-                <div className="flex flex-col items-center justify-center mt-20 w-full">
+                <div className="flex flex-col items-center justify-center mt-8 w-full">
                   <div className="w-56 h-56 mb-4 relative">
                     <div className="absolute inset-0 flex items-center justify-center text-indigo-500/50 drop-shadow-[0_0_20px_rgba(99,102,241,0.5)]">
                       <Target size={200} strokeWidth={0.8} />

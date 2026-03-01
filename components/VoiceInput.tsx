@@ -445,7 +445,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
 
       {/* ── IDLE mic button ─────────────────────────────────────────────────── */}
       {state === 'IDLE' && (
-        <div className="fixed bottom-6 left-0 right-0 z-[60] flex justify-center items-end pointer-events-none pb-2">
+        <div className="fixed bottom-8 left-0 right-0 z-[45] flex justify-center items-end pointer-events-none">
           <div className="relative flex flex-col items-center pointer-events-auto">
             <motion.div
               drag
@@ -467,12 +467,12 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onExpenseAdded, onRequestEdit }
                 if (!isDragging.current) startListening();
               }}
               id="voice-input-btn"
-              className="w-16 h-16 bg-white/50 dark:bg-[#111111]/85 backdrop-blur-[24px] border border-gray-200/50 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-gray-800 dark:text-white rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-50 pointer-events-auto transition-colors"
+              className="w-16 h-16 bg-white/50 dark:bg-[#202020]/90 backdrop-blur-[24px] border border-gray-200/50 dark:border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-gray-800 dark:text-white rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-50 pointer-events-auto transition-colors drop-shadow-[0_0_8px_rgba(255,255,255,0.05)]"
             >
               <div className="relative w-full h-full flex items-center justify-center">
-                <motion.div style={{ opacity: centerOpacity, position: 'absolute' }}><Mic size={28} /></motion.div>
-                <motion.div style={{ opacity: rightOpacity, position: 'absolute' }}><Keyboard size={28} /></motion.div>
-                <motion.div style={{ opacity: leftOpacity, position: 'absolute' }}><Camera size={28} /></motion.div>
+                <motion.div style={{ opacity: centerOpacity, position: 'absolute' }} className="drop-shadow-md"><Mic size={28} /></motion.div>
+                <motion.div style={{ opacity: rightOpacity, position: 'absolute' }} className="drop-shadow-md"><Keyboard size={28} /></motion.div>
+                <motion.div style={{ opacity: leftOpacity, position: 'absolute' }} className="drop-shadow-md"><Camera size={28} /></motion.div>
               </div>
             </motion.div>
           </div>

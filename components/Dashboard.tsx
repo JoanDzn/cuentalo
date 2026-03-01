@@ -141,15 +141,15 @@ const QuickMenu = ({ onBudget, onIncome, onExpense, onSavings, onRates }: { onBu
     const [isOpen, setIsOpen] = useState(false);
 
     const items = [
-        { icon: <Target size={16} />, action: onBudget, color: 'text-white', bg: 'bg-blue-500/80' },
-        { icon: <TrendingUp size={16} />, action: onIncome, color: 'text-white', bg: 'bg-emerald-500/80' },
-        { icon: <CreditCard size={16} />, action: onExpense, color: 'text-white', bg: 'bg-pink-500/80' },
-        { icon: <PiggyBank size={16} />, action: onSavings, color: 'text-white', bg: 'bg-indigo-500/80' },
-        { icon: <Globe size={16} />, action: onRates, color: 'text-white', bg: 'bg-yellow-500/80' },
+        { icon: <Target size={18} />, action: onBudget, color: 'text-white', bg: 'bg-blue-600' },
+        { icon: <TrendingUp size={18} />, action: onIncome, color: 'text-white', bg: 'bg-emerald-600' },
+        { icon: <CreditCard size={18} />, action: onExpense, color: 'text-white', bg: 'bg-rose-600' },
+        { icon: <PiggyBank size={18} />, action: onSavings, color: 'text-white', bg: 'bg-indigo-600' },
+        { icon: <Globe size={18} />, action: onRates, color: 'text-white', bg: 'bg-amber-500' },
     ];
 
     return (
-        <div className="absolute bottom-12 right-8 z-[40] flex flex-col items-center gap-1.5 pointer-events-auto">
+        <div className="absolute bottom-8 right-4 md:right-8 z-[45] flex flex-col items-center gap-1.5 pointer-events-auto">
             {/* Click outside overlay */}
             <AnimatePresence>
                 {isOpen && (
@@ -164,30 +164,28 @@ const QuickMenu = ({ onBudget, onIncome, onExpense, onSavings, onRates }: { onBu
             </AnimatePresence>
 
             {/* Icons Stack */}
-            <AnimatePresence>
-                {isOpen && (
-                    <div className="flex flex-col gap-1.5 mb-1">
-                        {items.map((item, i) => (
-                            <motion.button
-                                key={i}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{
-                                    delay: (items.length - 1 - i) * 0.03,
-                                    type: 'spring',
-                                    stiffness: 400,
-                                    damping: 25
-                                }}
-                                onClick={() => { item.action(); setIsOpen(false); }}
-                                className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${item.bg} ${item.color} hover:scale-110 active:scale-95 transition-all`}
-                            >
-                                {item.icon}
-                            </motion.button>
-                        ))}
-                    </div>
-                )}
-            </AnimatePresence>
+            <div className="flex flex-col gap-1.5 mb-1">
+                <AnimatePresence>
+                    {isOpen && items.map((item, i) => (
+                        <motion.button
+                            key={i}
+                            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.8, y: 10, transition: { delay: i * 0.02 } }}
+                            transition={{
+                                delay: (items.length - 1 - i) * 0.03,
+                                type: 'spring',
+                                stiffness: 400,
+                                damping: 25
+                            }}
+                            onClick={() => { item.action(); setIsOpen(false); }}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${item.bg} ${item.color} transition-colors`}
+                        >
+                            {item.icon}
+                        </motion.button>
+                    ))}
+                </AnimatePresence>
+            </div>
 
             {/* Main Trigger Button */}
             <motion.button
@@ -199,9 +197,9 @@ const QuickMenu = ({ onBudget, onIncome, onExpense, onSavings, onRates }: { onBu
                 whileTap={{ scale: 0.8 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-11 h-11 flex items-center justify-center text-gray-900 dark:text-white hover:opacity-80 drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)] dark:drop-shadow-[0_4px_12px_rgba(255,255,255,0.1)] transition-opacity"
+                className="w-12 h-12 bg-white/70 dark:bg-[#222222]/85 backdrop-blur-[24px] border border-gray-200/50 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-gray-800 dark:text-white rounded-full flex items-center justify-center z-50 pointer-events-auto transition-colors"
             >
-                <ChevronUp size={26} strokeWidth={3} />
+                <ChevronUp size={24} strokeWidth={3} />
             </motion.button>
         </div>
     );
@@ -259,23 +257,31 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
     const currentMonthTransactions = sortedTransactions.filter(t => t.date.startsWith(currentMonthKey));
 
     // Balance helpers
-    const vesAmount = (t: Transaction) => (t.originalCurrency === 'VES' && t.originalAmount != null) ? t.originalAmount : t.amount * rates.bcv;
+    const vesAmount = (t: Transaction) => {
+        if (t.originalCurrency === 'VES' && t.originalAmount != null) return t.originalAmount;
+        if (t.rateValue && t.rateValue > 0) return t.amount * t.rateValue;
+        return t.amount * rates.bcv;
+    };
     const usdAmount = (t: Transaction) => t.amount;
-    const getAmount = (t: Transaction) => isVES ? vesAmount(t) : usdAmount(t);
 
-    const cumulativeIncome = sortedTransactions.reduce((acc, t) => {
-        if (t.type === 'income') return acc + getAmount(t);
-        if (t.type === 'expense' && (t.category === 'Ahorro' || t.category === 'Savings')) return acc - getAmount(t);
-        return acc;
-    }, 0);
+    const calcBalance = (amountFn: (t: Transaction) => number) => {
+        const income = sortedTransactions.reduce((acc, t) => {
+            if (t.type === 'income') return acc + amountFn(t);
+            if (t.type === 'expense' && (t.category === 'Ahorro' || t.category === 'Savings')) return acc - amountFn(t);
+            return acc;
+        }, 0);
+        const expense = sortedTransactions.reduce((acc, t) => {
+            if (t.type === 'expense' && t.category !== 'Ahorro' && t.category !== 'Savings') return acc + amountFn(t);
+            return acc;
+        }, 0);
+        return income - expense;
+    };
 
-    const cumulativeExpense = sortedTransactions.reduce((acc, t) => {
-        if (t.type === 'expense' && t.category !== 'Ahorro' && t.category !== 'Savings') return acc + getAmount(t);
-        return acc;
-    }, 0);
+    const balanceUSD = calcBalance(usdAmount);
+    const balanceVES = calcBalance(vesAmount);
 
-    const balancePrimary = cumulativeIncome - cumulativeExpense;
-    const balanceSecondary = isVES ? balancePrimary / rates.bcv : balancePrimary * rates.bcv;
+    const balancePrimary = isVES ? balanceVES : balanceUSD;
+    const balanceSecondary = isVES ? balanceUSD : balanceVES;
 
     const monthlyData = useMemo(() => {
         const groups: Record<string, { income: number; expense: number; balance: number; transactions: Transaction[] }> = {};
@@ -333,7 +339,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                 <div className="relative flex flex-col items-center justify-center mb-6 pt-4 text-center">
                     <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white lowercase">cuentalo</h1>
                     <div className="absolute top-4 right-0 flex items-center gap-2">
-                        <button onClick={onProfileClick} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300">
+                        <button id="profile-btn" onClick={onProfileClick} className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300">
                             <User size={20} />
                         </button>
                     </div>
@@ -341,7 +347,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
 
                 <div className="flex bg-gray-200 dark:bg-[#1E1E1E] p-1 rounded-2xl mb-2 self-center w-full max-w-xs transition-colors">
                     <button onClick={() => changeView('recent')} className={`flex-1 py-2 text-sm font-semibold rounded-xl ${viewMode === 'recent' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500'}`}>Resumen</button>
-                    <button onClick={() => changeView('history')} className={`flex-1 py-2 text-sm font-semibold rounded-xl ${viewMode === 'history' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500'}`}>Historial</button>
+                    <button id="history-tab" onClick={() => changeView('history')} className={`flex-1 py-2 text-sm font-semibold rounded-xl ${viewMode === 'history' ? 'bg-white dark:bg-[#333] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500'}`}>Historial</button>
                 </div>
 
                 <div className="flex-1 relative min-h-0 overflow-hidden">
@@ -353,7 +359,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                 <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-white dark:from-[#111] to-transparent pointer-events-none z-10" />
 
                                 <div className="h-full overflow-y-auto scrollable-list pt-6 pb-28 relative z-0">
-                                    <div className="mb-3 text-center">
+                                    <div id="balance-card" className="mb-3 text-center">
                                         <div className="flex items-center justify-center gap-1 mb-1">
                                             <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Balance Total</p>
                                             <button onClick={() => setShowSecondary(s => !s)} className="p-1 text-gray-400">
@@ -427,10 +433,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                                         <div className="flex-1">
                                             <RecurringCTA onExpenseClick={onSubscriptionsClick} onIncomeClick={onFixedIncomeClick} onMissionsClick={onMissionsClick} onSavingsClick={onSavingsClick} />
                                         </div>
-                                        <button onClick={onCalculatorClick} className="w-16 bg-white dark:bg-[#111] rounded-[24px] shadow-lg border border-gray-100 dark:border-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-indigo-500 transition-all"><Calculator size={24} /></button>
+                                        <button id="calculator-shortcut" onClick={onCalculatorClick} className="w-16 bg-white dark:bg-[#111] rounded-[24px] shadow-lg border border-gray-100 dark:border-white/5 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-indigo-500 transition-all"><Calculator size={24} /></button>
                                     </div>
 
-                                    <div className="mb-2 px-1 flex items-center justify-between">
+                                    <div id="recent-transactions-section" className="mb-2 px-1 flex items-center justify-between">
                                         <button onClick={() => { setModalType('all'); setModalOpen(true); }} className="flex items-center gap-2 group">
                                             <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Recientes</h2>
                                             <ChevronRight size={16} className="text-gray-400 mt-[3px]" />
