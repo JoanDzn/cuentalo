@@ -149,58 +149,62 @@ const QuickMenu = ({ onBudget, onIncome, onExpense, onSavings, onRates }: { onBu
     ];
 
     return (
-        <div className="absolute bottom-8 right-4 md:right-8 z-[45] flex flex-col items-center gap-1.5 pointer-events-auto">
-            {/* Click outside overlay */}
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setIsOpen(false)}
-                        className="fixed inset-0 z-[-1] bg-black/0"
-                    />
-                )}
-            </AnimatePresence>
+        <div className="fixed bottom-8 left-0 right-0 z-[45] flex justify-center pointer-events-none w-full px-6">
+            <div className="w-full max-w-2xl relative flex justify-end">
+                <div className="flex flex-col items-center gap-1.5 pointer-events-auto mr-0 md:mr-2">
+                    {/* Click outside overlay */}
+                    <AnimatePresence>
+                        {isOpen && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setIsOpen(false)}
+                                className="fixed inset-0 z-[-1] bg-black/0"
+                            />
+                        )}
+                    </AnimatePresence>
 
-            {/* Icons Stack */}
-            <div className="flex flex-col gap-1.5 mb-1">
-                <AnimatePresence>
-                    {isOpen && items.map((item, i) => (
-                        <motion.button
-                            key={i}
-                            initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.8, y: 10, transition: { delay: i * 0.02 } }}
-                            transition={{
-                                delay: (items.length - 1 - i) * 0.03,
-                                type: 'spring',
-                                stiffness: 400,
-                                damping: 25
-                            }}
-                            onClick={() => { item.action(); setIsOpen(false); }}
-                            className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${item.bg} ${item.color} transition-colors`}
-                        >
-                            {item.icon}
-                        </motion.button>
-                    ))}
-                </AnimatePresence>
+                    {/* Icons Stack */}
+                    <div className="flex flex-col gap-1.5 mb-1">
+                        <AnimatePresence>
+                            {isOpen && items.map((item, i) => (
+                                <motion.button
+                                    key={i}
+                                    initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.8, y: 10, transition: { delay: i * 0.02 } }}
+                                    transition={{
+                                        delay: (items.length - 1 - i) * 0.03,
+                                        type: 'spring',
+                                        stiffness: 400,
+                                        damping: 25
+                                    }}
+                                    onClick={() => { item.action(); setIsOpen(false); }}
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${item.bg} ${item.color} transition-colors`}
+                                >
+                                    {item.icon}
+                                </motion.button>
+                            ))}
+                        </AnimatePresence>
+                    </div>
+
+                    {/* Main Trigger Button */}
+                    <motion.button
+                        initial={false}
+                        animate={{
+                            rotate: isOpen ? 180 : 0,
+                            scale: isOpen ? 0.9 : 1
+                        }}
+                        whileTap={{ scale: 0.8 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                        onClick={() => setIsOpen(!isOpen)}
+                        className="w-12 h-12 bg-white/70 dark:bg-[#222222]/85 backdrop-blur-[24px] border border-gray-200/50 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-gray-800 dark:text-white rounded-full flex items-center justify-center z-50 pointer-events-auto transition-colors"
+                    >
+                        <ChevronUp size={24} strokeWidth={3} />
+                    </motion.button>
+                </div>
             </div>
-
-            {/* Main Trigger Button */}
-            <motion.button
-                initial={false}
-                animate={{
-                    rotate: isOpen ? 180 : 0,
-                    scale: isOpen ? 0.9 : 1
-                }}
-                whileTap={{ scale: 0.8 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-12 h-12 bg-white/70 dark:bg-[#222222]/85 backdrop-blur-[24px] border border-gray-200/50 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-gray-800 dark:text-white rounded-full flex items-center justify-center z-50 pointer-events-auto transition-colors"
-            >
-                <ChevronUp size={24} strokeWidth={3} />
-            </motion.button>
         </div>
     );
 };
@@ -355,8 +359,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
                         {viewMode === 'recent' ? (
                             <motion.div key="recent" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="absolute inset-0">
                                 {/* Fades for Recent */}
-                                <div className="absolute top-0 left-0 right-0 h-12 bg-gradient-to-b from-white dark:from-[#111] to-transparent pointer-events-none z-10" />
-                                <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-white dark:from-[#111] to-transparent pointer-events-none z-10" />
+                                <div className="absolute top-0 left-0 right-0 h-12 bg-gradient-to-b from-[#F5F5F5] dark:from-[#121212] to-transparent pointer-events-none z-10" />
+                                <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-[#F5F5F5] dark:from-[#121212] to-transparent pointer-events-none z-10" />
 
                                 <div className="h-full overflow-y-auto scrollable-list pt-6 pb-28 relative z-0">
                                     <div id="balance-card" className="mb-3 text-center">
@@ -522,8 +526,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
 
                                             <div className="flex-1 relative min-h-0 -mx-4 px-4">
                                                 {/* Fades for History */}
-                                                <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-white dark:from-[#111] to-transparent pointer-events-none z-10" />
-                                                <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-white dark:from-[#111] to-transparent pointer-events-none z-10" />
+                                                <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[#F5F5F5] dark:from-[#121212] to-transparent pointer-events-none z-10" />
+                                                <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-[#F5F5F5] dark:from-[#121212] to-transparent pointer-events-none z-10" />
 
                                                 <div className="h-full overflow-y-auto scrollable-list space-y-3 pt-2 pb-28 relative z-0">
                                                     {md.transactions.length === 0 ? (
