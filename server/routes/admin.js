@@ -18,8 +18,10 @@ router.post('/login', async (req, res) => {
     try {
         await connectDB();
         const { email, password } = req.body;
-        // Basic hardcoded check
-        if (email !== ADMIN_EMAIL || password !== '123456') {
+        // Check email and hide password behind ENV (fallback to an expected default if missing temporarily)
+        const EXPECTED_PASSWORD = process.env.ADMIN_PASSWORD || '123456';
+
+        if (email !== ADMIN_EMAIL || password !== EXPECTED_PASSWORD) {
             return res.status(401).json({ message: 'Credenciales de Admin Invalidas' });
         }
 

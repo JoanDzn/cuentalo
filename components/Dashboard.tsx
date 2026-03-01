@@ -449,10 +449,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onEditTransaction, 
 
                                     <div className="space-y-3 px-1">
                                         {loading ? (
-                                            <div className="flex justify-center items-center gap-1.5 py-10">
-                                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" style={{ animationDelay: '150ms' }} />
-                                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" style={{ animationDelay: '300ms' }} />
+                                            <div className="flex flex-col justify-center items-center gap-3 py-16">
+                                                <div className="flex gap-2">
+                                                    <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-white animate-pulse" />
+                                                    <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-white animate-pulse" style={{ animationDelay: '150ms' }} />
+                                                    <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-white animate-pulse" style={{ animationDelay: '300ms' }} />
+                                                </div>
+                                                <p className="text-gray-500 dark:text-gray-400 text-sm font-bold uppercase tracking-widest mt-2">Cargando movimientos...</p>
                                             </div>
                                         ) : sortedTransactions.length === 0 ? (
                                             <p className="text-center py-10 text-gray-400">Sin movimientos.</p>
